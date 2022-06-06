@@ -2,6 +2,7 @@ import os
 import sys
 import optparse
 import random
+from pprint import pprint
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -20,7 +21,7 @@ def expo_gen(lam):
     return -1/lam*math.log(1-random.random())
 
 def generate_routefile(run_time, lam1, lam2):
-    random.seed(42)  # make tests reproducible
+    # random.seed(42)  # make tests reproducible
     N = run_time  # number of time steps
     # demand per second from different directions
     lam13 = lam1
@@ -52,31 +53,16 @@ guiShape="passenger"/>
   
         print("</routes>", file=routes)
 
+def one_iter(theta_1_min, theta_1_max,theta_2_min,theta_2_max,s_1,s_2, lam_1, lam_2,run_time, print_mode, gui):
 
-def run(par, run_time, print_mode=False):
-    """execute the TraCI control loop"""
-    theta_1_min = par[0]
-    theta_1_max = par[1]
-    theta_2_min = par[2]
-    theta_2_max= par[3]
-    s_1 = par[4]
-    s_2 = par[5]
+    generate_routefile(run_time, lam_1, lam_2)
 
-    h1 = 1.1
-    h2 = 1.1
-
-# one run renewal
+    # one run renewal
     total_length = 0
     par_direct = [0]*6
     step = 0
 
-# we start with phase 0 --- 42 green (road 2)
-# <phase duration="200" state="GrGr"/>
-    traci.trafficlight.setPhase("n1", 0)
-    last_switch = 0
-    green_1 = False
-
-# derivatives
+    # derivatives
     d_tau=[0]*6
     d_x1=[0]*6
     d_x2=[0]*6
@@ -84,16 +70,29 @@ def run(par, run_time, print_mode=False):
     NEP_1 = False
     NEP_2 = False
 
-# arrival and deprat rate
+    # arrival and deprat rate
     alpha_1 = [] # number of vehicle enter this road in the last time step)
     beta_1 = [] # number of vehicle pass the cross in the last time step)
     alpha_2 = []
     beta_2 = []
 
+    h1 = 0.8
+    h2 = 0.8
+
     queue_1 = [0] #vehicle num at each time step
     queue_2 = [0]
 
-    while step < run_time:
+
+
+    traci.start([sumoBinary, "-c", "tlc_single_straight.sumocfg","--no-step-log", "--no-warnings"])
+    # we start with phase 0 --- 42 green (road 2)
+    # <phase duration="200" state="GrGr"/>
+    traci.trafficlight.setPhase("n1", 0)
+    last_switch = 0
+    green_1 = False
+
+ 
+    while(step<run_time):
         traci.simulationStep()
         last_switch+=1
         step += 1
@@ -114,22 +113,38 @@ def run(par, run_time, print_mode=False):
 
         alpha_1.append(traci.inductionloop.getLastStepVehicleNumber("det_13_1"))
         alpha_2.append(traci.inductionloop.getLastStepVehicleNumber("det_42_4"))
-        if len(alpha_1)>10:
+        if len(alpha_1)>last_switch:
             alpha_1.pop(0)
             alpha_2.pop(0)
 
-        if len(beta_1)>10:
+        if len(beta_1)>last_switch:
             beta_1.pop(0)
-        if len(beta_2)>10:
+        if len(beta_2)>last_switch:
             beta_2.pop(0)
+
+        if print_mode:
+            print("arrival&departure rate:"+str(np.mean(alpha_1))+"  "+str(np.mean(alpha_2))+"  "+str(np.mean(beta_1))+"  "+str(np.mean(beta_2)))
         
         # print("beta_1:"+str(beta_1))
         # print("beta_2:"+str(beta_2))
 
         # update event time derivative
         if green_1:
+            #z1=theta_1_max
+            if last_switch >= theta_1_max and queue_2[-1]>0:
+                # switch light
+                traci.trafficlight.setPhase("n1", 0)
+                last_switch = 0
+                green_1=False
+
+                # update event time derivative
+                d_tau[1] = d_tau[1]+1
+                if print_mode:
+                    print("z1=theta_1_max")
+
+
             #x1 = s1(a)/ G2R1
-            if queue_1[-2]>=s_1 and queue_1[-1]<s_1 and queue_2[-1] >= s_2\
+            elif queue_1[-2]>=s_1 and queue_1[-1]<s_1 and queue_2[-1] >= s_2\
                 and last_switch>=theta_1_min:
                 #switch light  
                 traci.trafficlight.setPhase("n1", 0)
@@ -171,17 +186,7 @@ def run(par, run_time, print_mode=False):
                 if print_mode:
                     print("z1=theta_1_min")
 
-            #z1=theta_1_max
-            elif last_switch >= theta_1_max and queue_2[-1]>0:
-                # switch light
-                traci.trafficlight.setPhase("n1", 0)
-                last_switch = 0
-                green_1=False
-
-                # update event time derivative
-                d_tau[1] = d_tau[1]+1
-                if print_mode:
-                    print("z1=theta_1_max")
+          
 
             #alpha1=0
             elif queue_1[-1]==0 and queue_2[-1]>0:
@@ -199,8 +204,20 @@ def run(par, run_time, print_mode=False):
 
 
         else:
+            #z2=theta_2_max
+            if last_switch >= theta_2_max and queue_1[-1]>0:
+                # switch light
+                traci.trafficlight.setPhase("n1", 1)
+                last_switch = 0
+                green_1=True
+
+                # update event time derivative
+                d_tau[3] = d_tau[3]+1
+                if print_mode:
+                    print("z2=theta_2_max")
+
             #x2 = s2(a) G2R2
-            if queue_2[-2]>=s_2 and queue_2[-1]<s_2 and queue_1[-1] >= s_1 and \
+            elif queue_2[-2]>=s_2 and queue_2[-1]<s_2 and queue_1[-1] >= s_1 and \
                 last_switch>=theta_2_min:
                 #switch light
                 traci.trafficlight.setPhase("n1", 1)
@@ -241,17 +258,7 @@ def run(par, run_time, print_mode=False):
                 if print_mode:
                     print("z2=theta_2_min")
 
-            #z2=theta_2_max
-            elif last_switch >= theta_2_max and queue_1[-1]>0:
-                # switch light
-                traci.trafficlight.setPhase("n1", 1)
-                last_switch = 0
-                green_1=True
-
-                # update event time derivative
-                d_tau[3] = d_tau[3]+1
-                if print_mode:
-                    print("z2=theta_2_max")
+      
 
             #alpha2=0
             elif queue_2[-1]==0 and queue_1[-1]>0:
@@ -285,7 +292,8 @@ def run(par, run_time, print_mode=False):
             NEP_1 = True
             # induced by G2R1
             if last_switch==0 and not green_1:
-                d_x1= - np.mean(alpha_1) * np.array(d_tau)
+                d_x1 = - np.mean(alpha_1) * np.array(d_tau)
+        
             else:
                 d_x1 = [0,0,0,0,0,0]
         # E_1
@@ -335,6 +343,32 @@ def run(par, run_time, print_mode=False):
     sys.stdout.flush()
     return np.array(d_L)*1.0/run_time, (sum(queue_1)+sum(queue_2))*1.0/run_time
 
+def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary,print_mode=False):
+    """execute the TraCI control loop"""
+    theta_1_min = par[0]
+    theta_1_max = par[1]
+    theta_2_min = par[2]
+    theta_2_max= par[3]
+    s_1 = par[4]
+    s_2 = par[5]
+
+    d_L_list = []
+    mean_queue_length_list = []
+ 
+    iters = 0
+    while iters < iters_per_par:
+        iters+=1
+        d_L, mean_queue_length = one_iter(theta_1_min, theta_1_max,theta_2_min,theta_2_max,s_1,s_2,lam_1,lam_2, run_time, print_mode,sumoBinary)
+        d_L_list.append(d_L)
+        mean_queue_length_list.append(mean_queue_length)
+        
+        print("d_L:")
+        pprint(d_L_list)
+        print("mean_queue_length:"+str(mean_queue_length_list))
+        print("=========================")
+    
+    return np.mean(d_L_list,0), np.mean(mean_queue_length_list)
+
 def tl_test():
     traci.trafficlight.setPhase("n1", 0)
     step = 0
@@ -360,7 +394,7 @@ def get_options():
 if __name__ == "__main__":
     # sumoBinary = checkBinary('sumo')
     sumoBinary = checkBinary('sumo-gui')
-    generate_routefile(3600, 1/1, 1./30)
+    # generate_routefile(3600, 1/1., 1./10)
 
     theta_1_min_list = [15]
     theta_1_max_list = [30]
@@ -371,14 +405,13 @@ if __name__ == "__main__":
 
     mean_queue_length_list = []
     iter_num = 0
-    stepsize = 0.1
+    stepsize = 0.01
 
-    while iter_num < 1:
+    while iter_num < 5:
         iter_num += 1
 
-        traci.start([sumoBinary, "-c", "tlc_single_straight.sumocfg"])
         d_L, mean_queue_length = run([theta_1_min_list[-1],theta_1_max_list[-1],theta_2_min_list[-1],theta_2_max_list[-1],\
-                                        s_1_list[-1],s_2_list[-1]],3600)
+                                        s_1_list[-1],s_2_list[-1]],1/1., 1./10, 3600,10, sumoBinary,print_mode=True)
         #update parameters
         theta_1_min_list.append(max(0.1,theta_1_min_list[-1]-stepsize*d_L[0]))
         theta_1_max_list.append(max(theta_1_min_list[-1],theta_1_max_list[-1]-stepsize*d_L[1]))

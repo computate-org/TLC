@@ -23,7 +23,7 @@ def expo_gen(lam):
 
 
 def generate_routefile(run_time, lam1, lam2):
-    random.seed(22)  # make tests reproducible
+    # random.seed(22)  # make tests reproducible
     N = run_time  # number of time steps
     # demand per second from different directions
     lam13 = lam1
@@ -426,11 +426,12 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
         d_L_list.append(d_L)
         mean_queue_length_list.append(mean_queue_length)
 
-        print("d_L:")
-        pprint(d_L_list)
-        print("mean_queue_length:" + str(mean_queue_length_list))
-        print(
-            "=========================================================================================================")
+        if print_mode:
+            print("d_L:")
+            pprint(d_L_list)
+    print("==================================================================================================")
+    print("mean_queue_length with par" + str(par) + "----" + str(mean_queue_length_list))
+    print("==================================================================================================")
 
     return np.mean(d_L_list, 0), np.mean(mean_queue_length_list)
 
@@ -458,7 +459,8 @@ def get_options():
     return options
 
 
-def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, stepsize, sumoBinary, print_mode):
+def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, stepsize, sumoBinary,
+                        print_mode):
     theta_1_min_list = [initial_par[0]]
     theta_1_max_list = [initial_par[1]]
     theta_2_min_list = [initial_par[2]]
@@ -498,10 +500,35 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
         print('****************************************************************************')
 
 
+def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, par_change_idx, stepsize,
+                       sumoBinary, print_mode):
+    mean_queue_length_list = []
+    iter_num = 0
+    updated_par = initial_par
+
+    while iter_num < total_iter_num:
+        iter_num += 1
+        print('****************************************************************************')
+        print(updated_par)
+
+        d_L, mean_queue_length = run(updated_par, lam_1, lam_2, run_time, iters_per_par,
+                                     sumoBinary, print_mode)
+
+        updated_par[par_change_idx] += stepsize
+        # update performance
+        mean_queue_length_list.append(mean_queue_length)
+
+        print([round(i, 3) for i in mean_queue_length_list])
+        print('****************************************************************************')
+
+
 if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
     # generate_routefile(3600, 1/1., 1./10)
 
-    ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
-                        total_iter_num=20, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
+    # ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
+    #                     total_iter_num=20, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
+
+    brute_force_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1 / 3., lam_2=1 / 5., run_time=600, iters_per_par=10,
+                       total_iter_num=20, par_change_idx=0, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

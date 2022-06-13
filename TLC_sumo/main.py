@@ -22,8 +22,10 @@ def expo_gen(lam):
     return -1 / lam * math.log(1 - random.random())
 
 
-def generate_routefile(run_time, lam1, lam2):
-    # random.seed(22)  # make tests reproducible
+def generate_routefile(run_time, lam1, lam2, fix_seed):
+    if fix_seed:
+        random.seed(22)  # make tests reproducible
+
     N = run_time  # number of time steps
     # demand per second from different directions
     lam13 = lam1
@@ -56,9 +58,9 @@ guiShape="passenger"/>
         print("</routes>", file=routes)
 
 
-def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2, run_time, print_mode,
+def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2, run_time, fix_seed, print_mode,
              sumoBinary):
-    generate_routefile(run_time, lam_1, lam_2)
+    generate_routefile(run_time, lam_1, lam_2, fix_seed)
     # one run renewal
     total_length = 0
     par_direct = [0] * 6
@@ -402,8 +404,9 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
     traci.close()
     sys.stdout.flush()
-    return np.array(d_L) * 1.0 / run_time, (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
+    return np.array(d_L) * 1.0 / (run_time-100), (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
             run_time - 200)
+    # return np.array(d_L) * 1.0 / (run_time-100), sum(det_veh_num_1) * 1.0 / (run_time-100)
 
 
 def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False):
@@ -417,12 +420,16 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
 
     d_L_list = []
     mean_queue_length_list = []
+    fix_seed = False
+    if iters_per_par == 1:
+        fix_seed = True
+
 
     iters = 0
     while iters < iters_per_par:
         iters += 1
         d_L, mean_queue_length = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2,
-                                          run_time, print_mode, sumoBinary)
+                                          run_time, fix_seed, print_mode, sumoBinary)
         d_L_list.append(d_L)
         mean_queue_length_list.append(mean_queue_length)
 
@@ -518,7 +525,8 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
         # update performance
         mean_queue_length_list.append(mean_queue_length)
 
-        print([round(i, 3) for i in mean_queue_length_list])
+        print(mean_queue_length_list)
+        # print([round(i, 3) for i in mean_queue_length_list])
         print('****************************************************************************')
 
 
@@ -530,5 +538,5 @@ if __name__ == "__main__":
     # ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
     #                     total_iter_num=20, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
 
-    brute_force_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1 / 3., lam_2=1 / 5., run_time=600, iters_per_par=10,
-                       total_iter_num=20, par_change_idx=0, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
+    brute_force_mehtod(initial_par=[10, 20, 40, 60, 100, 100], lam_1=1., lam_2=1 / 5., run_time=200, iters_per_par=1,
+                       total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

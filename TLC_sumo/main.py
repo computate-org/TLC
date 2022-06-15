@@ -60,7 +60,7 @@ guiShape="passenger"/>
 
 def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2, run_time, fix_seed, print_mode,
              sumoBinary):
-    generate_routefile(run_time, lam_1, lam_2, fix_seed)
+    generate_routefile(run_time+100, lam_1, lam_2, fix_seed)
     # one run renewal
     total_length = 0
     par_direct = [0] * 6
@@ -90,6 +90,8 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
     det_veh_num_1 = [0]  # vehicle num at each time step
     det_veh_num_2 = [0]
+    queue_length_1 = [0]
+    queue_length_2 = [0]
 
     traci.start([sumoBinary, "-c", "tlc_single_straight.sumocfg", "--no-step-log", "--no-warnings"])
     # we start with phase 0 --- 42 green (road 2)
@@ -97,18 +99,20 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     traci.trafficlight.setPhase("n1", 0)
     last_switch = 0
     green_1 = False
-
-    while step < run_time - 100:
+    green_1_length = 0
+    green_2_length = 0
+    while step < run_time:
         traci.simulationStep()
         last_switch += 1
         step += 1
         # update det_veh_num list
         det_veh_num_1.append(traci.lanearea.getLastStepVehicleNumber("det_13"))
         det_veh_num_2.append(traci.lanearea.getLastStepVehicleNumber("det_42"))
+        queue_length_1.append(traci.lanearea.getJamLengthVehicle("det_13"))
+        queue_length_2.append(traci.lanearea.getJamLengthVehicle("det_42"))
         if print_mode:
             print("current detected vehicle number: " + str(det_veh_num_1[-1]) + "  " + str(det_veh_num_2[-1]))
-            print("jam length: " + str(traci.lanearea.getJamLengthVehicle("det_13")) + "  " + str(
-                traci.lanearea.getJamLengthVehicle("det_42")))
+            print("jam length: " + str(queue_length_1[-1]) + "  " + str(queue_length_2[-1]))
 
         # update arrival & departure rate
         if green_1:
@@ -152,6 +156,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
         # update event time derivative
         if green_1:
+            green_1_length += 1
             if det_veh_num_2[-1] == 0:
                 d_tau = [0, 0, 0, 0, 0, 0]
                 # if print_mode:
@@ -169,7 +174,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                     print("alpha1=0, alpha2>0")
 
             # z1=theta_1_max
-            elif last_switch == theta_1_max:
+            elif last_switch >= theta_1_max:
                 # switch light
                 traci.trafficlight.setPhase("n1", 0)
                 last_switch = 0
@@ -228,7 +233,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
 
         else:
-
+            green_2_length += 1
             if det_veh_num_1[-1] == 0:
                 d_tau = [0, 0, 0, 0, 0, 0]
                 # if print_mode:
@@ -245,7 +250,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                     print("alpha2=0, alpha1>0")
 
             # z2=theta_2_max
-            elif last_switch == theta_2_max:
+            elif last_switch >= theta_2_max:
                 # switch light
                 traci.trafficlight.setPhase("n1", 1)
                 last_switch = 0
@@ -404,9 +409,11 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
     traci.close()
     sys.stdout.flush()
-    return np.array(d_L) * 1.0 / (run_time-100), (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
-            run_time - 200)
-    # return np.array(d_L) * 1.0 / (run_time-100), sum(det_veh_num_1) * 1.0 / (run_time-100)
+    print("green_1_length: " + str(green_1_length))
+    print("green_2_length: " + str(green_2_length))
+    # return np.array(d_L) * 1.0 / (run_time-100), (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
+    #         run_time - 200)
+    return np.array(d_L) * 1.0 / run_time, sum(queue_length_1) * 1.0 / run_time, green_1_length/run_time
 
 
 def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False):
@@ -420,6 +427,7 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
 
     d_L_list = []
     mean_queue_length_list = []
+    green_1_ratio_list = []
     fix_seed = False
     if iters_per_par == 1:
         fix_seed = True
@@ -428,19 +436,21 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
     iters = 0
     while iters < iters_per_par:
         iters += 1
-        d_L, mean_queue_length = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2,
+        d_L, mean_queue_length, green_1_ratio = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2,
                                           run_time, fix_seed, print_mode, sumoBinary)
         d_L_list.append(d_L)
         mean_queue_length_list.append(mean_queue_length)
+        green_1_ratio_list.append(green_1_ratio)
 
         if print_mode:
             print("d_L:")
             pprint(d_L_list)
-    print("==================================================================================================")
-    print("mean_queue_length with par" + str(par) + "----" + str(mean_queue_length_list))
-    print("==================================================================================================")
+            print("==================================================================================================")
+            print("for par " + str(par) + ":")
+            print("mean_queue_length ----" + str(mean_queue_length_list))
+            print("==================================================================================================")
 
-    return np.mean(d_L_list, 0), np.mean(mean_queue_length_list)
+    return np.mean(d_L_list, 0), np.mean(mean_queue_length_list), np.mean(green_1_ratio_list)
 
 
 def tl_test():
@@ -481,7 +491,7 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
     while iter_num < total_iter_num:
         iter_num += 1
 
-        d_L, mean_queue_length = run(
+        d_L, mean_queue_length, green_1_ratio = run(
             [theta_1_min_list[-1], theta_1_max_list[-1], theta_2_min_list[-1], theta_2_max_list[-1],
              s_1_list[-1], s_2_list[-1]], lam_1, lam_2, run_time, iters_per_par,
             sumoBinary, print_mode)
@@ -510,6 +520,9 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
 def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, par_change_idx, stepsize,
                        sumoBinary, print_mode):
     mean_queue_length_list = []
+    green_1_ratio_list = []
+    ipa_derivative_list = []
+
     iter_num = 0
     updated_par = initial_par
 
@@ -518,25 +531,29 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
         print('****************************************************************************')
         print(updated_par)
 
-        d_L, mean_queue_length = run(updated_par, lam_1, lam_2, run_time, iters_per_par,
+        d_L, mean_queue_length, green_1_ratio = run(updated_par, lam_1, lam_2, run_time, iters_per_par,
                                      sumoBinary, print_mode)
-
+        print("d_L:"+str(d_L))
         updated_par[par_change_idx] += stepsize
         # update performance
-        mean_queue_length_list.append(mean_queue_length)
+        mean_queue_length_list.append(round(mean_queue_length, 3))
+        green_1_ratio_list.append(round(green_1_ratio, 4))
+        ipa_derivative_list.append(round(d_L[par_change_idx], 3))
 
         print(mean_queue_length_list)
+        print(green_1_ratio_list)
+        print(ipa_derivative_list)
         # print([round(i, 3) for i in mean_queue_length_list])
         print('****************************************************************************')
 
 
 if __name__ == "__main__":
-    sumoBinary = checkBinary('sumo')
-    # sumoBinary = checkBinary('sumo-gui')
+    # sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
     # generate_routefile(3600, 1/1., 1./10)
 
-    # ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
-    #                     total_iter_num=20, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
+    ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
+                        total_iter_num=10, stepsize=0.1, sumoBinary=sumoBinary, print_mode=True)
 
-    brute_force_mehtod(initial_par=[10, 20, 40, 60, 100, 100], lam_1=1., lam_2=1 / 5., run_time=200, iters_per_par=1,
-                       total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
+    # brute_force_mehtod(initial_par=[10, 20, 40, 60, 10, 10], lam_1=1/5., lam_2=1., run_time=600, iters_per_par=1,
+    #                    total_iter_num=10, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

@@ -157,7 +157,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         # update event time derivative
         if green_1:
             green_1_length += 1
-            if det_veh_num_2[-1] == 0:
+            if queue_length_2[-1] == 0:
                 d_tau = [0, 0, 0, 0, 0, 0]
                 # if print_mode:
                 #     print("alpha2=0")
@@ -187,7 +187,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
             # z1=theta_1_min
             elif last_switch == theta_1_min \
-                    and det_veh_num_2[-1] >= s_2 and det_veh_num_1[-1] < s_1:
+                    and queue_length_2[-1] >= s_2 and queue_length_1[-1] < s_1:
                 # switch light
                 traci.trafficlight.setPhase("n1", 0)
                 last_switch = 0
@@ -198,24 +198,24 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                     print("z1=theta_1_min")
 
             # x1 = s1(a)/ G2R1
-            elif last_switch >= theta_1_min and det_veh_num_2[-1] >= s_2 \
-                    and det_veh_num_1[-2] > s_1 >= det_veh_num_1[-1]:
+            elif last_switch >= theta_1_min and queue_length_2[-1] >= s_2 \
+                    and queue_length_1[-2] > s_1 >= queue_length_1[-1]:
                 # switch light
                 traci.trafficlight.setPhase("n1", 0)
                 green_1 = False
                 last_switch = 0
                 # update event time derivative
-                # if alpha_1_rate - beta_1_rate == 0:
-                if true_dyn_1 == 0:
+                if alpha_1_rate - beta_1_rate == 0:
+                # if true_dyn_1 == 0:
                     continue
                 else:
-                    d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x1)) / (true_dyn_1)
+                    d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x1)) / (alpha_1_rate - beta_1_rate)
                 if print_mode:
                     print("x1 = s1(a) G2R1")
 
             # x2 = s2(b)
-            elif last_switch >= theta_1_min and det_veh_num_1[-1] < s_1 \
-                    and det_veh_num_2[-2] < s_2 <= det_veh_num_2[-1]:
+            elif last_switch >= theta_1_min and queue_length_1[-1] < s_1 \
+                    and queue_length_2[-2] < s_2 <= queue_length_2[-1]:
                 # switch light
                 traci.trafficlight.setPhase("n1", 0)
                 green_1 = False
@@ -234,7 +234,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
         else:
             green_2_length += 1
-            if det_veh_num_1[-1] == 0:
+            if queue_length_1[-1] == 0:
                 d_tau = [0, 0, 0, 0, 0, 0]
                 # if print_mode:
                 #     print("alpha1=0")
@@ -263,7 +263,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
             # z2=theta_2_min
             elif last_switch == theta_2_min \
-                    and det_veh_num_1[-1] >= s_1 and det_veh_num_2[-1] < s_2:
+                    and queue_length_1[-1] >= s_1 and queue_length_2[-1] < s_2:
                 # switch light
                 traci.trafficlight.setPhase("n1", 1)
                 last_switch = 0
@@ -274,26 +274,26 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                     print("z2=theta_2_min")
 
             # x2 = s2(a)/ G2R2
-            elif last_switch >= theta_2_min and det_veh_num_1[-1] >= s_1 \
-                    and det_veh_num_2[-2] > s_2 >= det_veh_num_2[-1]:
+            elif last_switch >= theta_2_min and queue_length_1[-1] >= s_1 \
+                    and queue_length_2[-2] > s_2 >= queue_length_2[-1]:
                 # switch light
                 traci.trafficlight.setPhase("n1", 1)
                 green_1 = True
                 last_switch = 0
                 # update event time derivative
-                # if alpha_2_rate - beta_2_rate == 0:
-                if true_dyn_2 == 0:
+                if alpha_2_rate - beta_2_rate == 0:
+                # if true_dyn_2 == 0:
                     continue
                 else:
-                    d_tau = (np.array([0, 0, 0, 0, 0, 1]) - np.array(d_x2)) / (true_dyn_2)
+                    d_tau = (np.array([0, 0, 0, 0, 0, 1]) - np.array(d_x2)) / (alpha_2_rate - beta_2_rate)
                 if print_mode:
                     print("x2 = s2(a) G2R2")
 
 
 
             # x1 = s1(b)
-            elif last_switch >= theta_2_min and det_veh_num_2[-1] < s_2 \
-                    and det_veh_num_1[-2] < s_1 <= det_veh_num_1[-1]:
+            elif last_switch >= theta_2_min and queue_length_2[-1] < s_2 \
+                    and queue_length_1[-2] < s_1 <= queue_length_1[-1]:
                 # switch light
                 traci.trafficlight.setPhase("n1", 1)
                 green_1 = True
@@ -313,7 +313,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             print("time:" + str(step))
             print("last_switch:" + str(last_switch))
             print("green in 13:" + str(green_1))
-            # print("jam_length_vehilce:  " + str(traci.lanearea.getJamLengthVehicle("det_13")))
+            # print("jam_length_vehicle:  " + str(traci.lanearea.getJamLengthVehicle("det_13")))
             # print("last_step_veh_num:  " + str(traci.lanearea.getLastStepVehicleNumber("det_13")))
             # print("alpha_1: "+str(np.mean(alpha_1)))
             # print("beta_1: "+str(np.mean(beta_1)))
@@ -326,25 +326,25 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         # EP
         if print_mode:
             print("------------")
-        if (not NEP_1) and det_veh_num_1[-1] == 0:
+        if (not NEP_1) and queue_length_1[-1] == 0:
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
                 print("event at EP_1")
         # S_1
-        elif (not NEP_1) and det_veh_num_1[-1] > 0:
+        elif (not NEP_1) and queue_length_1[-1] > 0:
             NEP_1 = True
-            # # induced by G2R1
-            # if last_switch == 0 and not green_1:
-            #     d_x1 = - alpha_1_rate * np.array(d_tau)
-            #     if print_mode:
-            #         print("event at S_1 with light switch")
+            # induced by G2R1
+            if last_switch == 0 and not green_1:
+                d_x1 = - alpha_1_rate * np.array(d_tau)
+                if print_mode:
+                    print("event at S_1 with light switch")
 
-            # else:
-            d_x1 = [0, 0, 0, 0, 0, 0]
-            if print_mode:
-                print("event at S_1 NOT with light switch")
+            else:
+                d_x1 = [0, 0, 0, 0, 0, 0]
+                if print_mode:
+                    print("event at S_1 NOT with light switch")
         # E_1
-        elif NEP_1 and det_veh_num_1[-1] == 0:
+        elif NEP_1 and queue_length_1[-1] == 0:
             NEP_1 = False
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -364,13 +364,13 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
         # for road 42
         # EP
-        if not NEP_2 and det_veh_num_2[-1] == 0:
+        if not NEP_2 and queue_length_2[-1] == 0:
             if print_mode:
                 print("event at EP_2")
 
             d_x2 = [0, 0, 0, 0, 0, 0]
         # S_2
-        elif not NEP_2 and det_veh_num_2[-1] > 0:
+        elif not NEP_2 and queue_length_2[-1] > 0:
             NEP_2 = True
             # # induced by G2R2
             # if last_switch == 0 and green_1:
@@ -382,7 +382,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             if print_mode:
                 print("event at S_2 NOT with light switch")
         # E_2
-        elif NEP_2 and det_veh_num_2[-1] == 0:
+        elif NEP_2 and queue_length_2[-1] == 0:
             NEP_2 = False
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -409,8 +409,8 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
     traci.close()
     sys.stdout.flush()
-    print("green_1_length: " + str(green_1_length))
-    print("green_2_length: " + str(green_2_length))
+    # print("green_1_length: " + str(green_1_length))
+    # print("green_2_length: " + str(green_2_length))
     # return np.array(d_L) * 1.0 / (run_time-100), (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
     #         run_time - 200)
     return np.array(d_L) * 1.0 / run_time, sum(queue_length_1) * 1.0 / run_time, green_1_length/run_time
@@ -548,12 +548,12 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
 
 
 if __name__ == "__main__":
-    # sumoBinary = checkBinary('sumo')
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
+    # sumoBinary = checkBinary('sumo-gui')
     # generate_routefile(3600, 1/1., 1./10)
 
-    ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
-                        total_iter_num=10, stepsize=0.1, sumoBinary=sumoBinary, print_mode=True)
+    # ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
+    #                     total_iter_num=10, stepsize=0.1, sumoBinary=sumoBinary, print_mode=True)
 
-    # brute_force_mehtod(initial_par=[10, 20, 40, 60, 10, 10], lam_1=1/5., lam_2=1., run_time=600, iters_per_par=1,
-    #                    total_iter_num=10, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
+    brute_force_mehtod(initial_par=[10, 20, 40, 60, 10, 10], lam_1=1., lam_2=1/5., run_time=2000, iters_per_par=50,
+                       total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

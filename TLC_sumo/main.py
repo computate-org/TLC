@@ -80,8 +80,8 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     alpha_2 = []
     beta_2 = []
 
-    h1 = 0.8
-    h2 = 0.8
+    h1 = 1.
+    h2 = 1.
 
     true_dyn_1 = 0
     true_dyn_2 = 0
@@ -319,32 +319,26 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # print("beta_1: "+str(np.mean(beta_1)))
             print("d_tau:" + str(d_tau))
 
-        # update state derivative
+    # update state derivative
 
-        # first consider road 13
-
-        # EP
+    # first consider road 13
         if print_mode:
             print("------------")
-        if (not NEP_1) and queue_length_1[-1] == 0:
+
+        # S_1
+        if last_switch == 0 and not green_1 and not NEP_1 and det_veh_num_1[-1] > 0:
+            NEP_1 = True
+            if print_mode:
+                print("event at S_1 with light switch")
+            d_x1 = - alpha_1_rate * np.array(d_tau)
+        elif not NEP_1 and queue_length_1[-1]>0:
+            NEP_1 = True
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
-                print("event at EP_1")
-        # S_1
-        elif (not NEP_1) and queue_length_1[-1] > 0:
-            NEP_1 = True
-            # induced by G2R1
-            if last_switch == 0 and not green_1:
-                d_x1 = - alpha_1_rate * np.array(d_tau)
-                if print_mode:
-                    print("event at S_1 with light switch")
+                print("event at S_1 NOT with light switch")
 
-            else:
-                d_x1 = [0, 0, 0, 0, 0, 0]
-                if print_mode:
-                    print("event at S_1 NOT with light switch")
         # E_1
-        elif NEP_1 and queue_length_1[-1] == 0:
+        elif NEP_1 and queue_length_1[-1] == 0 and green_1:
             NEP_1 = False
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -356,38 +350,65 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             if print_mode:
                 print("event at G2R_1")
 
-        # R2G1
+            # R2G1
         elif last_switch == 0 and green_1:
             d_x1 = d_x1 + h2 * np.array(d_tau)
             if print_mode:
                 print("event at R2G_1")
 
-        # for road 42
-        # EP
-        if not NEP_2 and queue_length_2[-1] == 0:
-            if print_mode:
-                print("event at EP_2")
 
-            d_x2 = [0, 0, 0, 0, 0, 0]
+        # EP
+        elif (not NEP_1) and queue_length_1[-1] == 0:
+            d_x1 = [0, 0, 0, 0, 0, 0]
+            if print_mode:
+                print("event at EP_1")
+
+        else:
+            if print_mode:
+                if NEP_1:
+                    print("d_x1 not change, in NEP_1")
+                else:
+                    print("d_x1 not change, in EP_1")
+
+        # # S_1
+        # elif (not NEP_1) and queue_length_1[-1] > 0:
+        #     NEP_1 = True
+        #     # induced by G2R1
+        #     if last_switch == 0 and not green_1:
+        #         d_x1 = - alpha_1_rate * np.array(d_tau)
+        #         if print_mode:
+        #             print("event at S_1 with light switch")
+        #
+        #     else:
+        #         d_x1 = [0, 0, 0, 0, 0, 0]
+        #         if print_mode:
+        #             print("event at S_1 NOT with light switch")
+
+
+
+
+
+    # for road 42
+
         # S_2
-        elif not NEP_2 and queue_length_2[-1] > 0:
+        if last_switch == 0 and green_1 and not NEP_2 and det_veh_num_2[-1] > 0:
             NEP_2 = True
-            # # induced by G2R2
-            # if last_switch == 0 and green_1:
-            #     if print_mode:
-            #         print("event at S_2 with light switch")
-            #     d_x2 = - alpha_2_rate * np.array(d_tau)
-            # else:
+            if print_mode:
+                print("event at S_2 with light switch")
+            d_x2 = - alpha_2_rate * np.array(d_tau)
+        elif not NEP_2 and queue_length_2[-1]>0:
+            NEP_2 = True
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
                 print("event at S_2 NOT with light switch")
+
+
         # E_2
-        elif NEP_2 and queue_length_2[-1] == 0:
+        elif NEP_2 and queue_length_2[-1] == 0 and not green_1:
             NEP_2 = False
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
                 print("event at E_2")
-
         # G2R2
         elif last_switch == 0 and green_1:
             d_x2 = d_x2 - h2 * np.array(d_tau)
@@ -398,7 +419,35 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         elif last_switch == 0 and not green_1:
             d_x2 = d_x2 + h2 * np.array(d_tau)
             if print_mode:
-                print("event at R2G_2 by light switch")
+                print("event at R2G_2 ")
+
+        # EP
+        elif not NEP_2 and queue_length_2[-1] == 0 and not green_1:
+            d_x2 = [0, 0, 0, 0, 0, 0]
+            if print_mode:
+                print("event at EP_2")
+
+        else:
+            if print_mode:
+                if NEP_2:
+                    print("d_x2 not change, in NEP_2")
+                else:
+                    print("d_x2 not change, in EP_2")
+
+        #
+        # if not NEP_2 and queue_length_2[-1] > 0:
+        #     NEP_2 = True
+        #     # induced by G2R2
+        #     if last_switch == 0 and green_1:
+        #         if print_mode:
+        #             print("event at S_2 with light switch")
+        #         d_x2 = - alpha_2_rate * np.array(d_tau)
+        #     else:
+        #         d_x2 = [0, 0, 0, 0, 0, 0]
+        #         if print_mode:
+        #             print("event at S_2 NOT with light switch")
+
+
 
         d_L = d_L + np.array(d_x1) + np.array(d_x2)
         if print_mode:
@@ -411,8 +460,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     sys.stdout.flush()
     # print("green_1_length: " + str(green_1_length))
     # print("green_2_length: " + str(green_2_length))
-    # return np.array(d_L) * 1.0 / (run_time-100), (sum(det_veh_num_1[100:]) + sum(det_veh_num_2[100:])) * 1.0 / (
-    #         run_time - 200)
+    # return np.array(d_L) * 1.0 / run_time, (sum(queue_length_1) + sum(queue_length_2)) * 1.0 / run_time, green_1_length/run_time
     return np.array(d_L) * 1.0 / run_time, sum(queue_length_1) * 1.0 / run_time, green_1_length/run_time
 
 
@@ -436,8 +484,8 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
     iters = 0
     while iters < iters_per_par:
         iters += 1
-        d_L, mean_queue_length, green_1_ratio = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2,
-                                          run_time, fix_seed, print_mode, sumoBinary)
+        d_L, mean_queue_length, green_1_ratio = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2,
+                                                         lam_1, lam_2, run_time, fix_seed, print_mode, sumoBinary)
         d_L_list.append(d_L)
         mean_queue_length_list.append(mean_queue_length)
         green_1_ratio_list.append(green_1_ratio)
@@ -552,8 +600,8 @@ if __name__ == "__main__":
     # sumoBinary = checkBinary('sumo-gui')
     # generate_routefile(3600, 1/1., 1./10)
 
-    # ipa_gradient_mehtod(initial_par=[20, 40, 40, 60, 4, 4], lam_1=1/3., lam_2=1/5., run_time=600, iters_per_par=1,
-    #                     total_iter_num=10, stepsize=0.1, sumoBinary=sumoBinary, print_mode=True)
+    ipa_gradient_mehtod(initial_par=[10, 20, 40, 60, 100, 100], lam_1=1., lam_2=1/5., run_time=1000, iters_per_par=30,
+                        total_iter_num=50, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
 
-    brute_force_mehtod(initial_par=[10, 20, 40, 60, 10, 10], lam_1=1., lam_2=1/5., run_time=2000, iters_per_par=50,
-                       total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
+    # brute_force_mehtod(initial_par=[10, 20, 40, 60, 8, 9], lam_1=1., lam_2=1/5., run_time=1000, iters_per_par=1,
+    #                    total_iter_num=40, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

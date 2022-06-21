@@ -55,29 +55,29 @@
         <lane id=":n0_3_0" index="0" speed="13.89" length="15.11" shape="38.62,37.46 41.80,35.43 45.06,33.50 48.38,31.68 51.75,30.00"/>
     </edge>
 
-    <edge id="e01" from="n0" to="n1" priority="2" length="200.00">
-        <lane id="e01_0" index="0" speed="13.89" length="200.00" shape="40.38,40.13 -25.86,83.87"/>
+    <edge id="e01" from="n0" to="n1" priority="2" length="300.00">
+        <lane id="e01_0" index="0" speed="13.89" length="300.00" shape="40.38,40.13 -25.86,83.87"/>
     </edge>
-    <edge id="e02" from="n0" to="n2" priority="1" length="150.00">
-        <lane id="e02_0" index="0" speed="13.89" length="150.00" shape="50.60,40.99 72.00,89.66"/>
+    <edge id="e02" from="n0" to="n2" priority="1" length="300.00">
+        <lane id="e02_0" index="0" speed="13.89" length="300.00" shape="50.60,40.99 72.00,89.66"/>
     </edge>
-    <edge id="e03" from="n0" to="n3" priority="1" length="120.00">
-        <lane id="e03_0" index="0" speed="13.89" length="120.00" shape="51.75,30.00 95.73,9.17"/>
+    <edge id="e03" from="n0" to="n3" priority="1" length="300.00">
+        <lane id="e03_0" index="0" speed="13.89" length="300.00" shape="51.75,30.00 95.73,9.17"/>
     </edge>
-    <edge id="e04" from="n0" to="n4" priority="-1" length="100.00">
-        <lane id="e04_0" index="0" speed="13.89" length="100.00" shape="41.37,28.85 25.01,-3.65"/>
+    <edge id="e04" from="n0" to="n4" priority="-1" length="300.00">
+        <lane id="e04_0" index="0" speed="13.89" length="300.00" shape="41.37,28.85 25.01,-3.65"/>
     </edge>
-    <edge id="e10" from="n1" to="n0" priority="-1" length="200.00">
-        <lane id="e10_0" index="0" speed="13.89" length="200.00" shape="-27.62,81.19 38.62,37.46"/>
+    <edge id="e10" from="n1" to="n0" priority="-1" length="300.00">
+        <lane id="e10_0" index="0" speed="13.89" length="300.00" shape="-27.62,81.19 38.62,37.46"/>
     </edge>
-    <edge id="e20" from="n2" to="n0" priority="-1" length="150.00">
-        <lane id="e20_0" index="0" speed="13.89" length="150.00" shape="69.08,90.94 47.67,42.28"/>
+    <edge id="e20" from="n2" to="n0" priority="-1" length="300.00">
+        <lane id="e20_0" index="0" speed="13.89" length="300.00" shape="69.08,90.94 47.67,42.28"/>
     </edge>
-    <edge id="e30" from="n3" to="n0" priority="-1" length="120.00">
-        <lane id="e30_0" index="0" speed="13.89" length="120.00" shape="97.09,12.07 53.13,32.90"/>
+    <edge id="e30" from="n3" to="n0" priority="-1" length="300.00">
+        <lane id="e30_0" index="0" speed="13.89" length="300.00" shape="97.09,12.07 53.13,32.90"/>
     </edge>
-    <edge id="e40" from="n4" to="n0" priority="-1" length="100.00">
-        <lane id="e40_0" index="0" speed="13.89" length="100.00" shape="27.87,-5.09 44.23,27.42"/>
+    <edge id="e40" from="n4" to="n0" priority="-1" length="300.00">
+        <lane id="e40_0" index="0" speed="13.89" length="300.00" shape="27.87,-5.09 44.23,27.42"/>
     </edge>
 
     <tlLogic id="n1" type="static" programID="0" offset="0">

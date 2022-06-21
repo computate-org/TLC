@@ -41,10 +41,10 @@
 -->
 
 <additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
-    <e2Detector id="det_13" lane="e10_0" pos="110" length="90.00" freq="300.00" file="det_13.xml"/>
-    <e2Detector id="det_42" lane="e40_0" pos="10" length="90.00" freq="300.00" file="det_24.xml"/>
-    <e1Detector id="det_13_1" lane="e10_0" pos="13.06" freq="300.00" file="e1Detector_13_1.xml"/>
-    <e1Detector id="det_13_0" lane="e10_0" pos="191.18" freq="300.00" file="e1Detector_13_0.xml"/>
-    <e1Detector id="det_42_0" lane="e40_0" pos="92.07" freq="300.00" file="e1Detector_42_0.xml"/>
-    <e1Detector id="det_42_4" lane="e40_0" pos="5.83" freq="300.00" file="e1Detector_42_4.xml"/>
+    <e2Detector id="det_13" lane="e10_0" pos="10" length="290.00" freq="300.00" file="det_13.xml" timeThreshold="0.4" jamThreshold="14"/>
+    <e2Detector id="det_42" lane="e40_0" pos="10" length="290.00" freq="300.00" file="det_24.xml" timeThreshold="0.4" jamThreshold="14"/>
+    <e1Detector id="det_13_1" lane="e10_0" pos="10" freq="300.00" file="e1Detector_13_1.xml"/>
+    <e1Detector id="det_13_0" lane="e10_0" pos="293" freq="300.00" file="e1Detector_13_0.xml"/>
+    <e1Detector id="det_42_0" lane="e40_0" pos="293" freq="300.00" file="e1Detector_42_0.xml"/>
+    <e1Detector id="det_42_4" lane="e40_0" pos="10" freq="300.00" file="e1Detector_42_4.xml"/>
 </additional>

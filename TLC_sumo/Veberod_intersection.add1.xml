@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-06-21 18:00:18 by Eclipse SUMO netedit Version 1.10.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.net.xml"/>
+        <output.street-names value="true"/>
+    </output>
+
+    <processing>
+        <geometry.min-radius.fix.railways value="false"/>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="false"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="false"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="false"/>
+    </pedestrian>
+
+    <netedit>
+        <additional-files value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.add1.xml"/>
+    </netedit>
+
+    <report>
+        <aggregate-warnings value="5"/>
+    </report>
+
+</configuration>
+-->
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+    <e1Detector id="det_13_0" lane="96027913#2_0" pos="66.97" freq="300.00" file="det_13_0.xml"/>
+    <e1Detector id="det_13_1" lane="96027913#0_0" pos="2.15" freq="300.00" file="det_13_1.xml"/>
+    <e1Detector id="det_42_0" lane="-24626686#1_0" pos="15.54" freq="300.00" file="det_42_0.xml"/>
+    <e1Detector id="det_42_4" lane="-355113043#1_0" pos="4.96" freq="300.00" file="det_42_4.xml"/>
+</additional>

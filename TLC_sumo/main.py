@@ -22,6 +22,43 @@ def expo_gen(lam):
     return -1 / lam * math.log(1 - random.random())
 
 
+def generate_routefile_Veberod(run_time, lam1, lam2, fix_seed):
+    if fix_seed:
+        random.seed(22)  # make tests reproducible
+
+    N = run_time  # number of time steps
+    # demand per second from different directions
+    lam13 = lam1
+    lam42 = lam2
+
+    next_13 = expo_gen(lam13)
+    next_42 = expo_gen(lam42)
+
+    with open("Veberod_intersection.rou.xml", "w") as routes:
+        print("""<routes>
+        <vType id="v1" accel="2.6" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="55" \
+guiShape="passenger"/>
+
+        <route id="r13" edges="96027913#0 96027913#2 30186293 311389510#1" />
+        <route id="r42" edges="-355113043#1 -24626686#2 -24626686#1 -34992983#3 -34992983#1" />""", file=routes)
+        vehNr = 0
+        for i in range(N):
+            if i > next_13:
+                print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
+                    vehNr, i), file=routes)
+                vehNr += 1
+                next_13 += expo_gen(lam13)
+
+            if i > next_42:
+                print('    <vehicle id="up_%i" type="v1" route="r42" depart="%i" />' % (
+                    vehNr, i), file=routes)
+                vehNr += 1
+                next_42 += expo_gen(lam42)
+
+        print("</routes>", file=routes)
+
+
+
 def generate_routefile(run_time, lam1, lam2, fix_seed):
     if fix_seed:
         random.seed(22)  # make tests reproducible
@@ -60,7 +97,7 @@ guiShape="passenger"/>
 
 def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2, run_time, fix_seed, print_mode,
              sumoBinary):
-    generate_routefile(run_time+100, lam_1, lam_2, fix_seed)
+
     # one run renewal
     total_length = 0
     par_direct = [0] * 6
@@ -93,10 +130,17 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     queue_length_1 = [0]
     queue_length_2 = [0]
 
-    traci.start([sumoBinary, "-c", "tlc_single_straight.sumocfg", "--no-step-log", "--no-warnings"])
+    # generate_routefile(run_time+100, lam_1, lam_2, fix_seed)
+    generate_routefile_Veberod(run_time + 100, lam_1, lam_2, fix_seed)
+
+    tl_id = "267701936"
+    # tl_id = "n1"
+    # traci.start([sumoBinary,  "-c", "tlc_single_straight.sumocfg", "--fcd-output.geo", "--no-step-log", "--no-warnings"])
+    traci.start([sumoBinary, "-c", "tlc_single_straight.sumocfg",  "--fcd-output.geo", "true", "--fcd-output", "veberod-fcd.xml",
+                 "-b", "10", "--no-step-log", "--no-warnings"])
     # we start with phase 0 --- 42 green (road 2)
     # <phase duration="200" state="GrGr"/>
-    traci.trafficlight.setPhase("n1", 0)
+    traci.trafficlight.setPhase(tl_id, 0)
     last_switch = 0
     green_1 = False
     green_1_length = 0
@@ -165,7 +209,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # # alpha1=0, alpha2>0
             # elif det_veh_num_1[-1] == 0:
             #     # switch light
-            #     traci.trafficlight.setPhase("n1", 0)
+            #     traci.trafficlight.setPhase(tl_id, 0)
             #     last_switch = 0
             #     green_1 = False
             #
@@ -176,7 +220,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # z1=theta_1_max
             if last_switch >= theta_1_max:
                 # switch light
-                traci.trafficlight.setPhase("n1", 0)
+                traci.trafficlight.setPhase(tl_id, 0)
                 last_switch = 0
                 green_1 = False
 
@@ -189,7 +233,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_1_min > (last_switch-1) \
                     and queue_length_2[-1] >= s_2 and queue_length_1[-1] < s_1:
                 # switch light
-                traci.trafficlight.setPhase("n1", 0)
+                traci.trafficlight.setPhase(tl_id, 0)
                 last_switch = 0
                 green_1 = False
                 # update event time derivative
@@ -201,7 +245,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_1_min and queue_length_2[-1] >= s_2 \
                     and queue_length_1[-2] > s_1 >= queue_length_1[-1]:
                 # switch light
-                traci.trafficlight.setPhase("n1", 0)
+                traci.trafficlight.setPhase(tl_id, 0)
                 green_1 = False
                 last_switch = 0
                 # update event time derivative
@@ -217,7 +261,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_1_min and queue_length_1[-1] < s_1 \
                     and queue_length_2[-2] < s_2 <= queue_length_2[-1]:
                 # switch light
-                traci.trafficlight.setPhase("n1", 0)
+                traci.trafficlight.setPhase(tl_id, 0)
                 green_1 = False
                 last_switch = 0
                 # update event time derivative
@@ -242,7 +286,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # # alpha2=0, alpha1>0
             # elif det_veh_num_2[-1] == 0:
             #     # switch light
-            #     traci.trafficlight.setPhase("n1", 1)
+            #     traci.trafficlight.setPhase(tl_id, 1)
             #     last_switch = 0
             #     green_1 = True
             #     d_tau = [0, 0, 0, 0, 0, 0]
@@ -252,7 +296,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # z2=theta_2_max
             if last_switch >= theta_2_max:
                 # switch light
-                traci.trafficlight.setPhase("n1", 1)
+                traci.trafficlight.setPhase(tl_id, 1)
                 last_switch = 0
                 green_1 = True
 
@@ -265,7 +309,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_2_min > (last_switch-1) \
                     and queue_length_1[-1] >= s_1 and queue_length_2[-1] < s_2:
                 # switch light
-                traci.trafficlight.setPhase("n1", 1)
+                traci.trafficlight.setPhase(tl_id, 1)
                 last_switch = 0
                 green_1 = True
                 # update event time derivative
@@ -277,7 +321,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_2_min and queue_length_1[-1] >= s_1 \
                     and queue_length_2[-2] > s_2 >= queue_length_2[-1]:
                 # switch light
-                traci.trafficlight.setPhase("n1", 1)
+                traci.trafficlight.setPhase(tl_id, 1)
                 green_1 = True
                 last_switch = 0
                 # update event time derivative
@@ -295,7 +339,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             elif last_switch >= theta_2_min and queue_length_2[-1] < s_2 \
                     and queue_length_1[-2] < s_1 <= queue_length_1[-1]:
                 # switch light
-                traci.trafficlight.setPhase("n1", 1)
+                traci.trafficlight.setPhase(tl_id, 1)
                 green_1 = True
                 last_switch = 0
                 # update event time derivative
@@ -345,7 +389,6 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 print("event at E_1")
 
         # EP
-
         elif (not NEP_1) and det_veh_num_1[-1] == 0 and not green_1:
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -363,7 +406,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
             # R2G1
         elif last_switch == 0 and green_1:
-            d_x1 = d_x1 + h2 * np.array(d_tau)
+            d_x1 = d_x1 + h1 * np.array(d_tau)
             if print_mode:
                 print("event at R2G_1")
 
@@ -554,6 +597,8 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
     mean_queue_length_list = []
     mean_queue_length_1_list = []
     mean_queue_length_2_list = []
+    dL_dtheta1_list = []
+    dL_dtheta2_list = []
     iter_num = 0
 
     while iter_num < total_iter_num:
@@ -568,17 +613,21 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
         mean_queue_length_list.append(mean_queue_length)
         mean_queue_length_1_list.append(output1)
         mean_queue_length_2_list.append(output2)
+        dL_dtheta1_list.append(d_L[1])
+        dL_dtheta2_list.append(d_L[3])
         print('****************************************************************************')
         print("dL: " + str(d_L))
-        print([round(i, 3) for i in theta_1_min_list])
+        # print([round(i, 3) for i in theta_1_min_list])
         print([round(i, 3) for i in theta_1_max_list])
-        print([round(i, 3) for i in theta_2_min_list])
+        # print([round(i, 3) for i in theta_2_min_list])
         print([round(i, 3) for i in theta_2_max_list])
-        print([round(i, 3) for i in s_1_list])
-        print([round(i, 3) for i in s_2_list])
+        # print([round(i, 3) for i in s_1_list])
+        # print([round(i, 3) for i in s_2_list])
         print([round(i, 3) for i in mean_queue_length_list])
         print([round(i, 3) for i in mean_queue_length_1_list])
         print([round(i, 3) for i in mean_queue_length_2_list])
+        print([round(i, 3) for i in dL_dtheta1_list])
+        print([round(i, 3) for i in dL_dtheta2_list])
         print('****************************************************************************')
 
         # update parameters
@@ -625,8 +674,8 @@ if __name__ == "__main__":
     # sumoBinary = checkBinary('sumo-gui')
     # generate_routefile(3600, 1/1., 1./10)
 
-    ipa_gradient_mehtod(initial_par=[10, 33, 10, 29, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=20,
-                        total_iter_num=2, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
+    ipa_gradient_mehtod(initial_par=[10, 40, 10, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=1000, iters_per_par=1,
+                        total_iter_num=1, stepsize=0.1, sumoBinary=sumoBinary, print_mode=False)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

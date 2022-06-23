@@ -405,7 +405,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             print("------------")
 
         # S_1
-        if last_switch == 0 and not green_1 and not NEP_1 and det_veh_num_1[-1] > 0:
+        if last_switch <=1 and not green_1 and not NEP_1 and queue_length_1[-1] > 0:
             NEP_1 = True
             if print_mode:
                 print("event at S_1 with G2R_1")
@@ -416,6 +416,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             if print_mode:
                 print("event at S_1 NOT with light switch")
 
+
         # E_1
         elif NEP_1 and queue_length_1[-1] == 0 and green_1:
             NEP_1 = False
@@ -424,11 +425,15 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 print("event at E_1")
 
         # EP
-        elif (not NEP_1) and det_veh_num_1[-1] == 0 and not green_1:
-            d_x1 = [0, 0, 0, 0, 0, 0]
-            if print_mode:
-                print("event at EP_1")
-        elif (not NEP_1) and queue_length_1[-1] == 0 and green_1:
+        # elif (not NEP_1) and det_veh_num_1[-1] == 0 and not green_1:
+        #     d_x1 = [0, 0, 0, 0, 0, 0]
+        #     if print_mode:
+        #         print("event at EP_1")
+        # elif (not NEP_1) and queue_length_1[-1] == 0 and green_1:
+        #     d_x1 = [0, 0, 0, 0, 0, 0]
+        #     if print_mode:
+        #         print("event at EP_1")
+        elif (not NEP_1) and queue_length_1[-1] == 0:
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
                 print("event at EP_1")
@@ -454,24 +459,12 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 else:
                     print("d_x1 not change, in EP_1")
 
-        # # S_1
-        # elif (not NEP_1) and queue_length_1[-1] > 0:
-        #     NEP_1 = True
-        #     # induced by G2R1
-        #     if last_switch == 0 and not green_1:
-        #         d_x1 = - alpha_1_rate * np.array(d_tau)
-        #         if print_mode:
-        #             print("event at S_1 with light switch")
-        #
-        #     else:
-        #         d_x1 = [0, 0, 0, 0, 0, 0]
-        #         if print_mode:
-        #             print("event at S_1 NOT with light switch")
+
 
         # for road 42
 
         # S_2
-        if last_switch == 0 and green_1 and not NEP_2 and det_veh_num_2[-1] > 0:
+        if last_switch <= 1 and green_1 and not NEP_2 and queue_length_2[-1] > 0:
             NEP_2 = True
             d_x2 = - alpha_2_rate * np.array(d_tau)
             if print_mode:
@@ -492,14 +485,11 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 print("event at E_2")
 
         # EP
-        elif not NEP_2 and det_veh_num_2[-1] == 0 and green_1:
+        elif not NEP_2 and queue_length_2[-1] == 0:
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
                 print("event at EP_2")
-        elif not NEP_2 and queue_length_2[-1] == 0 and not green_1:
-            d_x2 = [0, 0, 0, 0, 0, 0]
-            if print_mode:
-                print("event at EP_2")
+
 
         # G2R2
         elif last_switch == 0 and green_1:
@@ -636,6 +626,21 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
 
     while iter_num < total_iter_num:
         iter_num += 1
+        if iter_num==10:
+            stepsize = stepsize/2.
+        if iter_num==20:
+            stepsize = stepsize/2.
+        if iter_num == 50:
+            stepsize = stepsize / 2.
+        if iter_num==100:
+            stepsize = stepsize/2.
+        if iter_num==130:
+            stepsize = stepsize/2.
+
+
+
+
+        # stepsize = (10 /iter_num*1.0)**1.5
 
         d_L, mean_queue_length, output1, output2 = run(
             [theta_1_min_list[-1], theta_1_max_list[-1], theta_2_min_list[-1], theta_2_max_list[-1],
@@ -711,8 +716,8 @@ if __name__ == "__main__":
     # sumoBinary = checkBinary('sumo')
     sumoBinary = checkBinary('sumo-gui')
 
-    ipa_gradient_mehtod(initial_par=[10, 30, 10, 35, 100, 100], lam_1=1/5., lam_2=1/5., run_time=1000, iters_per_par=1,
-                        total_iter_num=100, stepsize=1, sumoBinary=sumoBinary, print_mode=True)
+    ipa_gradient_mehtod(initial_par=[10, 30, 10, 35, 100, 100], lam_1=1/2., lam_2=1/5., run_time=1000, iters_per_par=20,
+                        total_iter_num=150, stepsize=1, sumoBinary=sumoBinary, print_mode=True)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
@@ -721,17 +726,16 @@ if __name__ == "__main__":
     #     columns=["theta_1_max", "theta_2_max", "total_queue_length", "queue_length_1", "queue_length_2", "dLdtheta_1",
     #              "dLdtheta_2"])
     #
-    # for theta_1 in range(15, 40):
+    # for theta_1 in range(10, 40):
     #     mean_queue_length_list, queue_length_1_list, queue_length_2_list, dL_dtheta1_list, dL_dtheta2_list = \
-    #         brute_force_mehtod(initial_par=[10, theta_1, 10, 15, 100, 100], lam_1=1 / 5., lam_2=1 / 5., run_time=2000,
-    #                            iters_per_par=1, total_iter_num=25, par_change_idx=3, stepsize=1, sumoBinary=sumoBinary,
+    #         brute_force_mehtod(initial_par=[1, theta_1, 1, 10, 100, 100], lam_1=1 / 5., lam_2=1 / 5., run_time=2000,
+    #                            iters_per_par=1, total_iter_num=30, par_change_idx=3, stepsize=1, sumoBinary=sumoBinary,
     #                            print_mode=True)
     #     bf_chart_ = pd.DataFrame(
     #         columns=["theta_1_max", "theta_2_max", "total_queue_length", "queue_length_1", "queue_length_2",
-    #                  "dLdtheta_1",
-    #                  "dLdtheta_2"])
+    #                  "dLdtheta_1", "dLdtheta_2"])
     #     bf_chart_["theta_1_max"] = [theta_1] * len(mean_queue_length_list)
-    #     bf_chart_["theta_2_max"] = range(15, 40)
+    #     bf_chart_["theta_2_max"] = range(10, 40)
     #     bf_chart_["total_queue_length"] = mean_queue_length_list
     #     bf_chart_["queue_length_1"] = queue_length_1_list
     #     bf_chart_["queue_length_2"] = queue_length_2_list

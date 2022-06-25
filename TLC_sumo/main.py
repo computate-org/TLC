@@ -236,24 +236,24 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         # update event time derivative
         if green_1:
             green_1_length += 1
-            # if queue_length_2[-1] == 0:
-            #     d_tau = [0, 0, 0, 0, 0, 0]
-            # if print_mode:
-            #     print("alpha2=0")
+            if queue_length_2[-1] == 0:
+                d_tau = [0, 0, 0, 0, 0, 0]
+                if print_mode:
+                    print("alpha2=0")
 
-            # # alpha1=0, alpha2>0
-            # elif det_veh_num_1[-1] == 0:
-            #     # switch light
-            #     traci.trafficlight.setPhase(tl_id, 0)
-            #     last_switch = 0
-            #     green_1 = False
-            #
-            #     d_tau = [0, 0, 0, 0, 0, 0]
-            #     if print_mode:
-            #         print("alpha1=0, alpha2>0")
+            # alpha1=0, alpha2>0
+            elif det_veh_num_1[-1] == 0:
+                # switch light
+                traci.trafficlight.setPhase(tl_id, 0)
+                last_switch = 0
+                green_1 = False
+
+                d_tau = [0, 0, 0, 0, 0, 0]
+                if print_mode:
+                    print("alpha1=0, alpha2>0")
 
             # z1=theta_1_max
-            if last_switch >= theta_1_max:
+            elif last_switch >= theta_1_max:
                 # switch light
                 traci.trafficlight.setPhase(tl_id, 0)
                 last_switch = 0
@@ -313,20 +313,20 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
         else:
             green_2_length += 1
-            # if queue_length_1[-1] == 0:
-            #     d_tau = [0, 0, 0, 0, 0, 0]
-            # if print_mode:
-            #     print("alpha1=0")
+            if queue_length_1[-1] == 0:
+                d_tau = [0, 0, 0, 0, 0, 0]
+                if print_mode:
+                    print("alpha1=0")
 
-            # # alpha2=0, alpha1>0
-            # elif det_veh_num_2[-1] == 0:
-            #     # switch light
-            #     traci.trafficlight.setPhase(tl_id, 1)
-            #     last_switch = 0
-            #     green_1 = True
-            #     d_tau = [0, 0, 0, 0, 0, 0]
-            #     if print_mode:
-            #         print("alpha2=0, alpha1>0")
+            # alpha2=0, alpha1>0
+            elif det_veh_num_2[-1] == 0:
+                # switch light
+                traci.trafficlight.setPhase(tl_id, 1)
+                last_switch = 0
+                green_1 = True
+                d_tau = [0, 0, 0, 0, 0, 0]
+                if print_mode:
+                    print("alpha2=0, alpha1>0")
 
             # z2=theta_2_max
             if last_switch >= theta_2_max:
@@ -540,8 +540,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     sys.stdout.flush()
     # print("green_1_length: " + str(green_1_length))
     # print("green_2_length: " + str(green_2_length))
-    return np.array(d_L) * 1.0 / run_time, (sum(queue_length_1[100:]) + sum(queue_length_2[100:])) * 1.0 / (
-                run_time - 100), \
+    return np.array(d_L) * 1.0 / run_time, (sum(queue_length_1[100:]) + sum(queue_length_2[100:])) * 1.0 / (run_time - 100), \
            sum(queue_length_1[100:]) * 1.0 / (run_time - 100), sum(queue_length_2[100:]) * 1.0 / (run_time - 100)
     # return np.array(d_L) * 1.0 / run_time, sum(queue_length_1) * 1.0 / run_time, green_1_length/run_time
 
@@ -626,26 +625,26 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
 
     while iter_num < total_iter_num:
         iter_num += 1
-        if iter_num==10:
-            stepsize = stepsize/2.
-        if iter_num==20:
-            stepsize = stepsize/2.
-        if iter_num == 50:
-            stepsize = stepsize / 2.
-        if iter_num==100:
-            stepsize = stepsize/2.
-        if iter_num==130:
-            stepsize = stepsize/2.
+
+    #     if iter_num==10:
+    #         stepsize = stepsize/2.
+    #     if iter_num==20:
+    #         stepsize = stepsize/2.
+    #     if iter_num == 50:
+    #         stepsize = stepsize / 2.
+    #     if iter_num==100:
+    #         stepsize = stepsize/2.
+    #     if iter_num==130:
+    #         stepsize = stepsize/2.
 
 
 
 
         # stepsize = (10 /iter_num*1.0)**1.5
 
-        d_L, mean_queue_length, output1, output2 = run(
-            [theta_1_min_list[-1], theta_1_max_list[-1], theta_2_min_list[-1], theta_2_max_list[-1],
-             s_1_list[-1], s_2_list[-1]], lam_1, lam_2, run_time, iters_per_par,
-            sumoBinary, print_mode)
+        d_L, mean_queue_length, output1, output2 = run([theta_1_min_list[-1], theta_1_max_list[-1], theta_2_min_list[-1],
+                                                        theta_2_max_list[-1],s_1_list[-1], s_2_list[-1]], lam_1, lam_2,
+                                                       run_time, iters_per_par, sumoBinary, print_mode)
 
         # update performance
         mean_queue_length_list.append(mean_queue_length)
@@ -713,11 +712,11 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
 
 
 if __name__ == "__main__":
-    # sumoBinary = checkBinary('sumo')
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
+    # sumoBinary = checkBinary('sumo-gui')
 
-    ipa_gradient_mehtod(initial_par=[10, 30, 10, 35, 100, 100], lam_1=1/2., lam_2=1/5., run_time=1000, iters_per_par=20,
-                        total_iter_num=150, stepsize=1, sumoBinary=sumoBinary, print_mode=True)
+    ipa_gradient_mehtod(initial_par=[1, 10, 1, 40, 100, 100], lam_1=1/5., lam_2=1/5., run_time=1000, iters_per_par=20,
+                        total_iter_num=100, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

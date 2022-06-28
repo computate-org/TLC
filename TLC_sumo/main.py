@@ -24,8 +24,13 @@ def expo_gen(lam):
 
 
 def generate_routefile_Veberod(run_time, lam1, lam2, fix_seed):
-    if fix_seed:
-        random.seed(22)  # make tests reproducible
+
+    seed = 3570926575676058649
+    if not fix_seed:
+        seed = random.randrange(sys.maxsize)
+    random.seed(seed)
+
+    print("Seed was:", seed)
 
     N = run_time  # number of time steps
     # demand per second from different directions
@@ -62,6 +67,11 @@ guiShape="passenger"/>
 def generate_routefile(run_time, lam1, lam2, fix_seed):
     if fix_seed:
         random.seed(22)  # make tests reproducible
+    else:
+        seed = random.randrange(sys.maxsize)
+        random.seed(seed)
+
+    print("Seed was:", seed)
 
     N = run_time  # number of time steps
     # demand per second from different directions
@@ -103,18 +113,10 @@ def get_jam_veh_ids(veh_id_list, jam_length):
 
 # get the number of vehicles joining the queue through the vehicle id list
 def get_increased_jam_num(veh_ids_list):
-    if len(veh_ids_list) == 0:
-        return 0
-    if len(veh_ids_list) == 1:
-        return len(veh_ids_list[0])
-
-    if len(veh_ids_list) < 10:
+    num = 0
+    if len(veh_ids_list) > 10:
         num = len(veh_ids_list[0])
-    else:
-        num = 0
-    for i in range(len(veh_ids_list) - 1):
-        num += len(set(veh_ids_list[i+1]) - set(veh_ids_list[i]))
-    return num
+    return len(set(sum(veh_ids_list, [])))-num
 
 
 def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1, lam_2, run_time, fix_seed, print_mode,
@@ -123,6 +125,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     total_length = 0
     par_direct = [0] * 6
     step = 0
+    last_switch_dtau = [0]*6
 
     # derivatives
     d_tau = [0] * 6
@@ -142,13 +145,16 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
     beta_2 = []
     jam_2 = []
 
-    h1 = 0.5
-    h2 = 0.5
+    h1 = 0.55
+    h2 = 0.55
 
     det_veh_num_1 = [0]  # vehicle num at each time step
     det_veh_num_2 = [0]
     queue_length_1 = [0]
     queue_length_2 = [0]
+    depart_veh_num_1 = [0]
+    depart_veh_num_2 = [0]
+
 
     # generate_routefile(run_time+100, lam_1, lam_2, fix_seed)
     generate_routefile_Veberod(run_time + 100, lam_1, lam_2, fix_seed)
@@ -179,13 +185,21 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             print("current detected vehicle number: " + str(det_veh_num_1[-1]) + "  " + str(det_veh_num_2[-1]))
             print("jam length: " + str(queue_length_1[-1]) + "  " + str(queue_length_2[-1]))
 
+
         # update departure rate
+        tmp1 = len(set(sum(beta_1, [])))
+        tmp2 = len(set(sum(beta_2, [])))
         if green_1:
             beta_1.append(list(traci.inductionloop.getLastStepVehicleIDs("det_13_0")))
             beta_2 = []
+            depart_veh_num_1.append(len(set(sum(beta_1, []))) - tmp1)
+            depart_veh_num_2.append(0)
         else:
             beta_1 = []
             beta_2.append(list(traci.inductionloop.getLastStepVehicleIDs("det_42_0")))
+            depart_veh_num_2.append(len(set(sum(beta_2, []))) - tmp2)
+            depart_veh_num_1.append(0)
+
         if len(beta_1) > 10:
             beta_1.pop(0)
         if len(beta_2) > 10:
@@ -196,14 +210,15 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
 
         # update arrival rate
-        # alpha_1.append(list(traci.inductionloop.getLastStepVehicleIDs("det_13_1")))
-        # alpha_2.append(list(traci.inductionloop.getLastStepVehicleIDs("det_42_4")))
-        # if len(alpha_1) > 10:
-        #     alpha_1.pop(0)
-        #     alpha_2.pop(0)
+        alpha_1.append(list(traci.inductionloop.getLastStepVehicleIDs("det_13_1")))
+        alpha_2.append(list(traci.inductionloop.getLastStepVehicleIDs("det_42_4")))
+        if len(alpha_1) > 10:
+            alpha_1.pop(0)
+            alpha_2.pop(0)
 
         if queue_length_1[-1] > 0:
-            jam_1.append(get_jam_veh_ids(list(traci.lanearea.getLastStepVehicleIDs("det_13")), queue_length_1[-1]))
+            pure_veh_id_13 = list(set(traci.lanearea.getLastStepVehicleIDs("det_13")) - set((beta_1 or ["any"])[-1]))
+            jam_1.append(get_jam_veh_ids(pure_veh_id_13 , queue_length_1[-1]))
             if len(jam_1) > 11:
                 jam_1.pop(0)
             alpha_1_rate = get_increased_jam_num(jam_1) / 10.
@@ -212,8 +227,10 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             # alpha_1_rate = len(set(sum(alpha_1, []))) / 10.
             alpha_1_rate = beta_1_rate
 
+
         if queue_length_2[-1] > 0:
-            jam_2.append(get_jam_veh_ids(list(traci.lanearea.getLastStepVehicleIDs("det_42")), queue_length_2[-1]))
+            pure_veh_id_42 = list(set(traci.lanearea.getLastStepVehicleIDs("det_42")) - set((beta_2 or ["any"])[-1]))
+            jam_2.append(get_jam_veh_ids(pure_veh_id_42, queue_length_2[-1]))
             if len(jam_2) > 11:
                 jam_2.pop(0)
             alpha_2_rate = get_increased_jam_num(jam_2) / 10.
@@ -226,11 +243,13 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         if print_mode:
             print('------------------------------------')
             print("alpha:" + str(alpha_1) + ">>>>" + str(alpha_2))
+            print("veh_ids: " + str(traci.lanearea.getLastStepVehicleIDs("det_13")) + ">>>>" + str(traci.lanearea.getLastStepVehicleIDs("det_42")))
             print("jam:" + str(jam_1) + ">>>>" + str(jam_2))
             print("arrival rate: " + str(alpha_1_rate) + ">>>>" + str(alpha_2_rate))
             print("beta:" + str(beta_1) + ">>>>" + str(beta_2))
             print("departure rate: " + str(beta_1_rate) + ">>>>" + str(beta_2_rate))
-            # print("det_ids:" + str(traci.lanearea.getLastStepVehicleIDs("det_13")))
+            print("depart_veh_num: " + str(depart_veh_num_1[-1]) + ">>>>" + str(depart_veh_num_2[-1]))
+            print('tmp: ' + str(tmp1)+ ">>>>" + str(tmp2))
             print('-------------------------------------')
 
         # update event time derivative
@@ -284,11 +303,11 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 green_1 = False
                 last_switch = 0
                 # update event time derivative
-                if alpha_1_rate - beta_1_rate == 0:
+                if alpha_1_rate - h1 == 0:
                     # if true_dyn_1 == 0:
-                    continue
+                    print("WARNING: alpha_1_rate - h1 == 0 when x1 = s1(a)/ G2R1")
                 else:
-                    d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x1)) / (alpha_1_rate - beta_1_rate)
+                    d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x1)) / (alpha_1_rate - h1)
                 if print_mode:
                     print("x1 = s1(a) G2R1")
 
@@ -301,7 +320,9 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 last_switch = 0
                 # update event time derivative
                 if alpha_1_rate == 0:
-                    continue
+                    alpha_1_rate = max(len(set(sum(alpha_1, []))) / 10., 0.1)
+                    if print_mode:
+                        print("WARING: alpha_1_rate==0 when x2 = s2(b), use alternative " + str(alpha_1_rate))
                 else:
                     d_tau = (np.array([0, 0, 0, 0, 0, 1]) - np.array(d_x1)) / alpha_1_rate
                 if print_mode:
@@ -329,7 +350,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                     print("alpha2=0, alpha1>0")
 
             # z2=theta_2_max
-            if last_switch >= theta_2_max:
+            elif last_switch >= theta_2_max:
                 # switch light
                 traci.trafficlight.setPhase(tl_id, 1)
                 last_switch = 0
@@ -360,11 +381,10 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 green_1 = True
                 last_switch = 0
                 # update event time derivative
-                if alpha_2_rate - beta_2_rate == 0:
-                    # if true_dyn_2 == 0:
-                    continue
+                if alpha_2_rate - h2 == 0:
+                    print("WARNING: alpha_2_rate - h2 == 0 when x2 = s2(a)/ G2R2")
                 else:
-                    d_tau = (np.array([0, 0, 0, 0, 0, 1]) - np.array(d_x2)) / (alpha_2_rate - beta_2_rate)
+                    d_tau = (np.array([0, 0, 0, 0, 0, 1]) - np.array(d_x2)) / (alpha_2_rate - h2)
                 if print_mode:
                     print("x2 = s2(a) G2R2")
 
@@ -379,14 +399,20 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
                 last_switch = 0
                 # update event time derivative
                 if alpha_2_rate == 0:
-                    continue
-                else:
-                    d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x2)) / alpha_2_rate
+                    alpha_2_rate = max(len(set(sum(alpha_2, []))) / 10., 0.1)
+
+                    if print_mode:
+                        print("WARING: alpha_2_rate==0 when x1 = s1(b), use alternative " + str(alpha_2_rate))
+
+                d_tau = (np.array([0, 0, 0, 0, 1, 0]) - np.array(d_x2)) / alpha_2_rate
                 if print_mode:
                     print("x1 = s1(b) G2R2")
 
             else:
                 d_tau = [0, 0, 0, 0, 0, 0]
+
+        if not np.all(np.array(d_tau) == 0):
+            last_switch_dtau = d_tau
 
         if print_mode:
             print("time:" + str(step))
@@ -405,12 +431,12 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             print("------------")
 
         # S_1
-        if last_switch <=1 and not green_1 and not NEP_1 and queue_length_1[-1] > 0:
+        if last_switch <= 1 and not green_1 and not NEP_1 and queue_length_1[-1] > 0:
             NEP_1 = True
             if print_mode:
                 print("event at S_1 with G2R_1")
-            d_x1 = - alpha_1_rate * np.array(d_tau)
-        elif not NEP_1 and queue_length_1[-1] > 0:
+            d_x1 = - alpha_1_rate * np.array(last_switch_dtau)
+        elif last_switch != 0 and (not NEP_1) and queue_length_1[-1] > 0:
             NEP_1 = True
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -418,7 +444,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
 
         # E_1
-        elif NEP_1 and queue_length_1[-1] == 0 and green_1:
+        elif NEP_1 and queue_length_1[-1] == 0:
             NEP_1 = False
             d_x1 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -466,11 +492,11 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         # S_2
         if last_switch <= 1 and green_1 and not NEP_2 and queue_length_2[-1] > 0:
             NEP_2 = True
-            d_x2 = - alpha_2_rate * np.array(d_tau)
+            d_x2 = - alpha_2_rate * np.array(last_switch_dtau)
             if print_mode:
                 print("event at S_2 with G2R_2")
 
-        elif not NEP_2 and queue_length_2[-1] > 0:
+        elif last_switch != 0 and (not NEP_2) and queue_length_2[-1] > 0:
             NEP_2 = True
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -478,7 +504,7 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
 
         # E_2
-        elif NEP_2 and queue_length_2[-1] == 0 and not green_1:
+        elif NEP_2 and queue_length_2[-1] == 0:
             NEP_2 = False
             d_x2 = [0, 0, 0, 0, 0, 0]
             if print_mode:
@@ -535,14 +561,23 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
             print("d_x1_total: " + str(d_x1_total))
             print("d_x2_total: " + str(d_x2_total))
             print('===========================================================================================')
-
+    try:
+        mean_waiting_time_total = (sum(queue_length_1[100:]) + sum(queue_length_2[100:]))/(sum(depart_veh_num_1[100:])+sum(depart_veh_num_2[100:]))
+        mean_waiting_time_1 = sum(queue_length_1[100:])/(sum(depart_veh_num_1[100:]))
+        mean_waiting_time_2 = sum(queue_length_2[100:])/(sum(depart_veh_num_2[100:]))
+    except:
+        print(depart_veh_num_1)
+        print(depart_veh_num_2)
+        print(queue_length_1)
+        print(queue_length_2)
+        print("=")
     traci.close()
     sys.stdout.flush()
     # print("green_1_length: " + str(green_1_length))
     # print("green_2_length: " + str(green_2_length))
-    return np.array(d_L) * 1.0 / run_time, (sum(queue_length_1[100:]) + sum(queue_length_2[100:])) * 1.0 / (run_time - 100), \
-           sum(queue_length_1[100:]) * 1.0 / (run_time - 100), sum(queue_length_2[100:]) * 1.0 / (run_time - 100)
-    # return np.array(d_L) * 1.0 / run_time, sum(queue_length_1) * 1.0 / run_time, green_1_length/run_time
+    # return np.array(d_L) * 1.0 / run_time, (sum(queue_length_1[100:]) + sum(queue_length_2[100:])) * 1.0 / (run_time - 100), \
+    #        sum(queue_length_1[100:]) * 1.0 / (run_time - 100), sum(queue_length_2[100:]) * 1.0 / (run_time - 100)
+    return np.array(d_L) * 1.0 / run_time, mean_waiting_time_total, mean_waiting_time_1, mean_waiting_time_2
 
 
 def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False):
@@ -567,11 +602,19 @@ def run(par, lam_1, lam_2, run_time, iters_per_par, sumoBinary, print_mode=False
         iters += 1
         d_L, mean_queue_length, op1, op2 = one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2,
                                                     lam_1, lam_2, run_time, fix_seed, print_mode, sumoBinary)
+        #exclude the outliers
+        if np.any(np.array(d_L) > 100) or np.any(np.array(d_L) < -100):
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("extreme d_L  " + str(d_L) + " ----- delete")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            continue
         d_L_list.append(d_L)
 
         mean_queue_length_list.append(mean_queue_length)
         output1.append(op1)
         output2.append(op2)
+        print("d_L:")
+        pprint(d_L)
 
         if print_mode:
             print("d_L:")
@@ -609,27 +652,22 @@ def get_options():
 
 def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, stepsize, sumoBinary,
                         print_mode):
-    theta_1_min_list = [initial_par[0]]
-    theta_1_max_list = [initial_par[1]]
-    theta_2_min_list = [initial_par[2]]
-    theta_2_max_list = [initial_par[3]]
-    s_1_list = [initial_par[4]]
-    s_2_list = [initial_par[5]]
+
+    par_list = [[i] for i in initial_par]
 
     mean_queue_length_list = []
     mean_queue_length_1_list = []
     mean_queue_length_2_list = []
-    dL_dtheta1_list = []
-    dL_dtheta2_list = []
+    d_L_list = []
     iter_num = 0
 
     while iter_num < total_iter_num:
         iter_num += 1
 
-    #     if iter_num==10:
-    #         stepsize = stepsize/2.
-    #     if iter_num==20:
-    #         stepsize = stepsize/2.
+        if iter_num==10:
+            stepsize = stepsize/2.
+        if iter_num==20:
+            stepsize = stepsize/2.
     #     if iter_num == 50:
     #         stepsize = stepsize / 2.
     #     if iter_num==100:
@@ -638,42 +676,47 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
     #         stepsize = stepsize/2.
 
 
+        # stepsize = (1/iter_num*1.0)**1.5
 
-
-        # stepsize = (10 /iter_num*1.0)**1.5
-
-        d_L, mean_queue_length, output1, output2 = run([theta_1_min_list[-1], theta_1_max_list[-1], theta_2_min_list[-1],
-                                                        theta_2_max_list[-1],s_1_list[-1], s_2_list[-1]], lam_1, lam_2,
+        d_L, mean_queue_length, output1, output2 = run([par[-1] for par in par_list], lam_1, lam_2,
                                                        run_time, iters_per_par, sumoBinary, print_mode)
 
         # update performance
         mean_queue_length_list.append(mean_queue_length)
         mean_queue_length_1_list.append(output1)
         mean_queue_length_2_list.append(output2)
-        dL_dtheta1_list.append(d_L[1])
-        dL_dtheta2_list.append(d_L[3])
+        d_L_list.append(d_L)
         print('****************************************************************************')
         print("dL: " + str(d_L))
-        # print([round(i, 3) for i in theta_1_min_list])
-        print([round(i, 3) for i in theta_1_max_list])
-        # print([round(i, 3) for i in theta_2_min_list])
-        print([round(i, 3) for i in theta_2_max_list])
-        # print([round(i, 3) for i in s_1_list])
-        # print([round(i, 3) for i in s_2_list])
+        for par in par_list:
+            print([round(i, 3) for i in par])
+
+        print("------")
         print([round(i, 3) for i in mean_queue_length_list])
         print([round(i, 3) for i in mean_queue_length_1_list])
         print([round(i, 3) for i in mean_queue_length_2_list])
-        print([round(i, 3) for i in dL_dtheta1_list])
-        print([round(i, 3) for i in dL_dtheta2_list])
+        # print([round(i, 3) for i in dL_dtheta1_list])
+        # print([round(i, 3) for i in dL_dtheta2_list])
+        print("------")
+        for i in range(len(d_L)):
+            print([round(dl[i], 3) for dl in d_L_list])
+
         print('****************************************************************************')
 
         # update parameters
-        theta_1_min_list.append(max(0.1, theta_1_min_list[-1] - stepsize * d_L[0]))
-        theta_1_max_list.append(max(theta_1_min_list[-1], theta_1_max_list[-1] - stepsize * d_L[1]))
-        theta_2_min_list.append(max(0.1, theta_2_min_list[-1] - stepsize * d_L[2]))
-        theta_2_max_list.append(max(theta_2_min_list[-1], theta_2_max_list[-1] - stepsize * d_L[3]))
-        s_1_list.append(max(0.1, s_1_list[-1] - stepsize * d_L[4]))
-        s_2_list.append(max(0.1, s_2_list[-1] - stepsize * d_L[5]))
+
+        #theta_1_min
+        par_list[0].append(max(0.1, par_list[0][-1] - stepsize * d_L[0]))
+        #theta_1_max
+        par_list[1].append(max(par_list[0][-1], par_list[1][-1] - stepsize * d_L[1]))
+        #theta_2_min
+        par_list[2].append(max(0.1, par_list[2][-1] - stepsize * d_L[2]))
+        #theta_2_max
+        par_list[3].append(max(par_list[2][-1], par_list[3][-1] - stepsize * d_L[3]))
+        #s_1
+        par_list[4].append(max(0.1, par_list[4][-1] - stepsize * d_L[4]))
+        #s_2
+        par_list[5].append(max(0.1, par_list[5][-1] - stepsize * d_L[5]))
 
 
 def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total_iter_num, par_change_idx, stepsize,
@@ -705,8 +748,8 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
         print(mean_queue_length_list)
         print(queue_length_1_list)
         print(queue_length_2_list)
-        print(dL_dtheta1_list)
-        print(dL_dtheta2_list)
+        # print(dL_dtheta1_list)
+        # print(dL_dtheta2_list)
         print('****************************************************************************')
     return mean_queue_length_list, queue_length_1_list, queue_length_2_list, dL_dtheta1_list, dL_dtheta2_list
 
@@ -715,8 +758,8 @@ if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
-    ipa_gradient_mehtod(initial_par=[1, 10, 1, 40, 100, 100], lam_1=1/5., lam_2=1/5., run_time=1000, iters_per_par=20,
-                        total_iter_num=100, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
+    ipa_gradient_mehtod(initial_par=[5, 10, 10, 40, 3, 4], lam_1=1/6., lam_2=1/10., run_time=1000, iters_per_par=20,
+                        total_iter_num=50, stepsize=10, sumoBinary=sumoBinary, print_mode=False)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

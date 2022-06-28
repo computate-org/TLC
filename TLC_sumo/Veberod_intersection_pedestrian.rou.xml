@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-06-21 18:00:18 by Eclipse SUMO netedit Version 1.10.0
+<!-- generated on 2022-06-27 11:42:07 by Eclipse SUMO netedit Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
@@ -8,7 +8,7 @@
     </input>
 
     <output>
-        <output-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.net.xml"/>
+        <output-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.net.xml"/>
         <output.street-names value="true"/>
     </output>
 
@@ -20,6 +20,7 @@
     </processing>
 
     <junctions>
+        <no-internal-links value="false"/>
         <no-turnarounds value="true"/>
         <junctions.corner-detail value="5"/>
         <junctions.limit-turn-speed value="5.5"/>
@@ -31,7 +32,7 @@
     </pedestrian>
 
     <netedit>
-        <additional-files value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.add1.xml"/>
+        <route-files value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.rou.xml"/>
     </netedit>
 
     <report>
@@ -41,9 +42,11 @@
 </configuration>
 -->
 
-<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
-    <e1Detector id="det_13_0" lane="96027913#2_0" pos="66.97" freq="300.00" file="det_13_0.xml"/>
-    <e1Detector id="det_13_1" lane="96027913#0_0" pos="2.15" freq="300.00" file="det_13_1.xml"/>
-    <e1Detector id="det_42_0" lane="-24626686#1_0" pos="15.54" freq="300.00" file="det_42_0.xml"/>
-    <e1Detector id="det_42_4" lane="-355113043#1_0" pos="4.96" freq="300.00" file="det_42_4.xml"/>
-</additional>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <person id="person_0" depart="0.00">
+        <personTrip from="-24626686#2" to="-34992983#1"/>
+    </person>
+    <person id="person_1" depart="0.00">
+        <personTrip from="96027913#0" to="311389510#1"/>
+    </person>
+</routes>

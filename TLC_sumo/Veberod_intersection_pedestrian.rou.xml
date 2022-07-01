@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-06-27 11:42:07 by Eclipse SUMO netedit Version 1.10.0
+<!-- generated on 2022-06-28 14:52:46 by Eclipse SUMO netedit Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection.net.xml"/>
+        <sumo-net-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.net.xml"/>
     </input>
 
     <output>
@@ -43,10 +43,6 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <person id="person_0" depart="0.00">
-        <personTrip from="-24626686#2" to="-34992983#1"/>
-    </person>
-    <person id="person_1" depart="0.00">
-        <personTrip from="96027913#0" to="311389510#1"/>
-    </person>
+    <flow id="flow_1" begin="0.00" from="96027913#0" to="311389510#1" end="3600.00" number="396"/>
+    <flow id="flow_0" begin="0.00" from="-355113043#1" to="-34992983#1" end="3600.00" number="450"/>
 </routes>

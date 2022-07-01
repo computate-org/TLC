@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import random
 import math
-
+import randomTrips
 
 def expo_gen(lam):
     return -1 / lam * math.log(1 - random.random())
@@ -641,6 +641,77 @@ def tl_test():
     traci.close()
     sys.stdout.flush()
 
+TLID = "267701936"
+VEHICLE_GREEN_PHASE = 0
+PEDESTRIAN_GREEN_PHASE_13 = 1
+PEDESTRIAN_GREEN_PHASE_24 = 4
+PEDESTRIAN_GREEN_PHASE_all = 7
+CROSSING_13 = [":267701936_c3", ":267701936_c1"]
+CROSSING_24 = [":267701936_c2", ":267701936_c0"]
+WALKINGAREAS = [":267701936_w0", ":267701936_w1", ":267701936_w2", ":267701936_w3"]
+
+def pedestrian_test():
+
+
+
+    # randomTrips.main(randomTrips.get_options([
+    #     '--net-file', "Veberod_intersection_pedestrian.net.xml",
+    #     '--output-trip-file', 'Veberod_intersection_pedestrian.trip.xml',
+    #     '--seed', '42',  # make runs reproducible
+    #     '--pedestrians',
+    #     '--prefix', 'ped',
+    #     # prevent trips that start and end on the same edge
+    #     '--min-distance', '1',
+    #     '--trip-attributes', 'departPos="random" arrivalPos="random"',
+    #     '--binomial', '4',
+    #     '--period', '35']))
+
+    traci.start(
+        [sumoBinary, "-c", "Veberod_intersection_pedestrian.sumocfg","--no-step-log", "--no-warnings"])
+    # we start with phase 0 --- 42 green (road 2)
+    # <phase duration="200" state="GrGr"/>
+    traci.trafficlight.setPhase(TLID, VEHICLE_GREEN_PHASE)
+    step = 0
+    min_green_time = 5
+    wait_condition = [False, False]
+    while step < 3600:
+        traci.simulationStep()
+        wait_condition = check_waiting_persons()
+        # print(wait_condition)
+        if wait_condition[0] and wait_condition[1]:
+            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_all)
+        elif wait_condition[0]:
+            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_13)
+        elif wait_condition[1]:
+            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_24)
+
+
+
+
+
+def check_waiting_persons():
+    wait = [False, False]
+    for wa in WALKINGAREAS:
+        peds = traci.edge.getLastStepPersonIDs(wa)
+        for ped in peds:
+            if traci.person.getWaitingTime(ped) >= 1:
+                if (not wait[0]) and (traci.person.getNextEdge(ped) in CROSSING_13):
+                    numWaiting = traci.trafficlight.getServedPersonCount(TLID, PEDESTRIAN_GREEN_PHASE_13)
+                    print("%s: pedestrian %s pushes the button to cross 13 (waiting: %s)" %
+                          (traci.simulation.getTime(), ped, numWaiting))
+                    wait[0] = True
+
+                elif (not wait[1]) and (traci.person.getNextEdge(ped) in CROSSING_24):
+                    numWaiting = traci.trafficlight.getServedPersonCount(TLID, PEDESTRIAN_GREEN_PHASE_24)
+                    print("%s: pedestrian %s pushes the button to cross 24 (waiting: %s)" %
+                          (traci.simulation.getTime(), ped, numWaiting))
+                    wait[1] = True
+
+                elif wait[0] and wait[1]:
+                    return wait
+    return wait
+
+
 
 def get_options():
     optParser = optparse.OptionParser()
@@ -664,9 +735,9 @@ def ipa_gradient_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, tota
     while iter_num < total_iter_num:
         iter_num += 1
 
-        if iter_num==10:
+        if iter_num==30:
             stepsize = stepsize/2.
-        if iter_num==20:
+        if iter_num==50:
             stepsize = stepsize/2.
     #     if iter_num == 50:
     #         stepsize = stepsize / 2.
@@ -758,32 +829,12 @@ if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
-    ipa_gradient_mehtod(initial_par=[5, 10, 10, 40, 3, 4], lam_1=1/6., lam_2=1/10., run_time=1000, iters_per_par=20,
-                        total_iter_num=50, stepsize=10, sumoBinary=sumoBinary, print_mode=False)
+    # pedestrian_test()
+
+    ipa_gradient_mehtod(initial_par=[1, 1, 1, 1, 100, 100], lam_1=1/6., lam_2=1/10., run_time=1000, iters_per_par=20,
+                        total_iter_num=2, stepsize=20, sumoBinary=sumoBinary, print_mode=False)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)
 
-    # bf_chart = pd.DataFrame(
-    #     columns=["theta_1_max", "theta_2_max", "total_queue_length", "queue_length_1", "queue_length_2", "dLdtheta_1",
-    #              "dLdtheta_2"])
-    #
-    # for theta_1 in range(10, 40):
-    #     mean_queue_length_list, queue_length_1_list, queue_length_2_list, dL_dtheta1_list, dL_dtheta2_list = \
-    #         brute_force_mehtod(initial_par=[1, theta_1, 1, 10, 100, 100], lam_1=1 / 5., lam_2=1 / 5., run_time=2000,
-    #                            iters_per_par=1, total_iter_num=30, par_change_idx=3, stepsize=1, sumoBinary=sumoBinary,
-    #                            print_mode=True)
-    #     bf_chart_ = pd.DataFrame(
-    #         columns=["theta_1_max", "theta_2_max", "total_queue_length", "queue_length_1", "queue_length_2",
-    #                  "dLdtheta_1", "dLdtheta_2"])
-    #     bf_chart_["theta_1_max"] = [theta_1] * len(mean_queue_length_list)
-    #     bf_chart_["theta_2_max"] = range(10, 40)
-    #     bf_chart_["total_queue_length"] = mean_queue_length_list
-    #     bf_chart_["queue_length_1"] = queue_length_1_list
-    #     bf_chart_["queue_length_2"] = queue_length_2_list
-    #     bf_chart_["dLdtheta_1"] = dL_dtheta1_list
-    #     bf_chart_["dLdtheta_2"] = dL_dtheta2_list
-    #
-    #     bf_chart = pd.concat([bf_chart, bf_chart_])
-    #
-    # bf_chart.to_csv('bf_chart.csv', index=False)
+

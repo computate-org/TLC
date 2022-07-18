@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-06-30 16:16:46 by Eclipse SUMO netedit Version 1.10.0
+<!-- generated on 2022-07-18 10:19:10 by Eclipse SUMO netedit Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
@@ -272,7 +272,7 @@
         <lane id=":cluster_1112561393_420767834_469421912_w1_0" index="0" allow="pedestrian" speed="1.00" length="16.52" width="3.20" shape="279.20,798.45 277.88,795.54 253.85,803.40 252.90,806.46 252.91,806.46 251.96,809.52 252.36,811.43 253.68,812.93 258.48,808.93 262.24,806.24 265.57,804.35 269.10,802.75 273.44,800.96"/>
     </edge>
 
-    <edge id="-24626686#1" from="469961520" to="267701936" name="Dörrödsvägen" priority="11" type="highway.secondary" shape="206.71,833.06 213.61,845.36 216.02,848.16 220.61,853.48">
+    <edge id="-24626686#1" from="469961520" to="267701936" name="Dörrödsvägen" priority="3" type="highway.secondary" shape="206.71,833.06 213.61,845.36 216.02,848.16 220.61,853.48">
         <lane id="-24626686#1_0" index="0" allow="pedestrian" speed="27.78" length="16.00" width="2.00" shape="210.44,831.12 217.07,842.94 218.49,844.60">
             <param key="origId" value="24626686"/>
         </lane>
@@ -281,7 +281,7 @@
         </lane>
         <param key="ref" value="102"/>
     </edge>
-    <edge id="-24626686#2" from="267701934" to="469961520" name="Dörrödsvägen" priority="11" type="highway.secondary" shape="182.53,788.62 187.58,800.70 195.44,814.06 206.71,833.06">
+    <edge id="-24626686#2" from="267701934" to="469961520" name="Dörrödsvägen" priority="3" type="highway.secondary" shape="182.53,788.62 187.58,800.70 195.44,814.06 206.71,833.06">
         <lane id="-24626686#2_0" index="0" allow="pedestrian" speed="27.78" length="42.18" width="2.00" shape="189.48,794.34 191.34,798.82 199.06,811.92 210.25,830.80">
             <param key="origId" value="24626686"/>
         </lane>

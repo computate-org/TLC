@@ -19,49 +19,9 @@ import random
 import math
 import randomTrips
 
+
 def expo_gen(lam):
     return -1 / lam * math.log(1 - random.random())
-
-
-def generate_routefile_Veberod(run_time, lam1, lam2, fix_seed):
-
-    seed = 3570926575676058649
-    if not fix_seed:
-        seed = random.randrange(sys.maxsize)
-    random.seed(seed)
-
-    print("Seed was:", seed)
-
-    N = run_time  # number of time steps
-    # demand per second from different directions
-    lam13 = lam1
-    lam42 = lam2
-
-    next_13 = expo_gen(lam13)
-    next_42 = expo_gen(lam42)
-
-    with open("Veberod_intersection.rou.xml", "w") as routes:
-        print("""<routes>
-        <vType id="v1" accel="2.6" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="55" \
-guiShape="passenger"/>
-
-        <route id="r13" edges="96027913#0 96027913#2 30186293 311389510#1" />
-        <route id="r42" edges="-355113043#1 -24626686#2 -24626686#1 -34992983#3 -34992983#1" />""", file=routes)
-        vehNr = 0
-        for i in range(N):
-            if i > next_13:
-                print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
-                    vehNr, i), file=routes)
-                vehNr += 1
-                next_13 += expo_gen(lam13)
-
-            if i > next_42:
-                print('    <vehicle id="up_%i" type="v1" route="r42" depart="%i" />' % (
-                    vehNr, i), file=routes)
-                vehNr += 1
-                next_42 += expo_gen(lam42)
-
-        print("</routes>", file=routes)
 
 
 def generate_routefile(run_time, lam1, lam2, fix_seed):
@@ -104,6 +64,86 @@ guiShape="passenger"/>
 
         print("</routes>", file=routes)
 
+
+def generate_routefile_Veberod(file_name, run_time, lam1, lam2, fix_seed):
+
+    seed = 3570926575676058649
+    if not fix_seed:
+        seed = random.randrange(sys.maxsize)
+    random.seed(seed)
+
+    print("Seed was:", seed)
+
+    N = run_time  # number of time steps
+    # demand per second from different directions
+    lam13 = lam1
+    lam42 = lam2
+
+    next_13 = expo_gen(lam13)
+    next_42 = expo_gen(lam42)
+
+    with open(file_name, "w") as routes:
+        print("""<routes>
+        <vType id="v1" accel="2.6" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="55" \
+guiShape="passenger"/>
+
+        <route id="r13" edges="96027913#0 96027913#2 30186293 311389510#1" />
+        <route id="r42" edges="-355113043#1 -24626686#2 -24626686#1 -34992983#3 -34992983#1" />""", file=routes)
+        vehNr = 0
+        for i in range(N):
+            if i > next_13:
+                print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
+                    vehNr, i), file=routes)
+                vehNr += 1
+                next_13 += expo_gen(lam13)
+
+            if i > next_42:
+                print('    <vehicle id="up_%i" type="v1" route="r42" depart="%i" />' % (
+                    vehNr, i), file=routes)
+                vehNr += 1
+                next_42 += expo_gen(lam42)
+
+        print("</routes>", file=routes)
+
+
+def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
+
+    seed = 3570926575676058649
+    if not fix_seed:
+        seed = random.randrange(sys.maxsize)
+    random.seed(seed)
+
+    print("Seed was:", seed)
+
+    N = run_time  # number of time steps
+    # demand per second from different directions
+    lam_w31 = lam1
+    lam_w42 = lam2
+
+    next_w31 = expo_gen(lam_w31)
+    next_w42 = expo_gen(lam_w42)
+
+    with open(file_name, "w") as routes:
+        print('<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">', file=routes)
+
+        pedNr = 0
+        for i in range(N):
+            if i > next_w31:
+                print("""   <person id="ped_down_%i" depart="%i" departPos="random">
+        <personTrip from="34992983#2" to="24626686#2" arrivalPos="random"/>
+    </person>""" % (pedNr, i), file=routes)
+                pedNr += 1
+                next_w31 += expo_gen(lam_w31)
+
+            if i > next_w42:
+                print("""
+    <person id="ped_right_%i" depart="%i" departPos="random">
+        <personTrip from="96027913#2" to="30186293" arrivalPos="random"/>
+    </person>""" % (pedNr, i), file=routes)
+                pedNr += 1
+                next_w42 += expo_gen(lam_w42)
+
+        print("</routes>", file=routes)
 
 # get the vehicle id list of the queue
 def get_jam_veh_ids(veh_id_list, jam_length):
@@ -157,13 +197,13 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
 
 
     # generate_routefile(run_time+100, lam_1, lam_2, fix_seed)
-    generate_routefile_Veberod(run_time + 100, lam_1, lam_2, fix_seed)
+    generate_routefile_Veberod("Veberod_intersection.rou.xml", run_time + 100, lam_1, lam_2, fix_seed)
 
     tl_id = "267701936"
     # tl_id = "n1"
     # traci.start([sumoBinary,  "-c", "tlc_single_straight.sumocfg", "--fcd-output.geo", "--no-step-log", "--no-warnings"])
     traci.start(
-        [sumoBinary, "-c", "tlc_single_straight.sumocfg", "--fcd-output.geo", "true", "--fcd-output", "veberod-fcd.xml",
+        [sumoBinary, "-c", "Veberod_intersection.sumocfg", "--fcd-output.geo", "true", "--fcd-output", "veberod-fcd.xml",
          "--no-step-log", "--no-warnings"])
     # we start with phase 0 --- 42 green (road 2)
     # <phase duration="200" state="GrGr"/>
@@ -184,6 +224,10 @@ def one_iter(theta_1_min, theta_1_max, theta_2_min, theta_2_max, s_1, s_2, lam_1
         if print_mode:
             print("current detected vehicle number: " + str(det_veh_num_1[-1]) + "  " + str(det_veh_num_2[-1]))
             print("jam length: " + str(queue_length_1[-1]) + "  " + str(queue_length_2[-1]))
+            print("blocking vehicles: " + str(traci.trafficlight.getBlockingVehicles(tl_id, 0)) + "  &  " +
+                  str(traci.trafficlight.getBlockingVehicles(tl_id, 1)) + "  &  " +
+                  str(traci.trafficlight.getBlockingVehicles(tl_id, 2)) + "  &  " +
+                  str(traci.trafficlight.getBlockingVehicles(tl_id, 3)))
 
 
         # update departure rate
@@ -650,24 +694,15 @@ CROSSING_13 = [":267701936_c3", ":267701936_c1"]
 CROSSING_24 = [":267701936_c2", ":267701936_c0"]
 WALKINGAREAS = [":267701936_w0", ":267701936_w1", ":267701936_w2", ":267701936_w3"]
 
+
 def pedestrian_test():
-
-
-
-    # randomTrips.main(randomTrips.get_options([
-    #     '--net-file', "Veberod_intersection_pedestrian.net.xml",
-    #     '--output-trip-file', 'Veberod_intersection_pedestrian.trip.xml',
-    #     '--seed', '42',  # make runs reproducible
-    #     '--pedestrians',
-    #     '--prefix', 'ped',
-    #     # prevent trips that start and end on the same edge
-    #     '--min-distance', '1',
-    #     '--trip-attributes', 'departPos="random" arrivalPos="random"',
-    #     '--binomial', '4',
-    #     '--period', '35']))
+    run_time = 3600
+    generate_routefile_Veberod("Veberod_intersection_pedestrian.rou.xml", run_time, 1/5., 1/6, True)
+    generate_routefile_pedestrian("Veberod_intersection_pedestrian.trip.xml", run_time, 1/15., 1/10., True)
 
     traci.start(
-        [sumoBinary, "-c", "Veberod_intersection_pedestrian.sumocfg","--no-step-log", "--no-warnings"])
+        [sumoBinary, "-c", "Veberod_intersection_pedestrian.sumocfg", "--step-length", "0.1", "--fcd-output.geo", "true",\
+         "--fcd-output", "veberod-fcd.xml", "--no-step-log", "--no-warnings"])
     # we start with phase 0 --- 42 green (road 2)
     # <phase duration="200" state="GrGr"/>
     traci.trafficlight.setPhase(TLID, VEHICLE_GREEN_PHASE)
@@ -675,6 +710,7 @@ def pedestrian_test():
     min_green_time = 5
     wait_condition = [False, False]
     while step < 3600:
+        step += 1
         traci.simulationStep()
         wait_condition = check_waiting_persons()
         # print(wait_condition)
@@ -684,9 +720,6 @@ def pedestrian_test():
             traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_13)
         elif wait_condition[1]:
             traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_24)
-
-
-
 
 
 def check_waiting_persons():
@@ -826,13 +859,13 @@ def brute_force_mehtod(initial_par, lam_1, lam_2, run_time, iters_per_par, total
 
 
 if __name__ == "__main__":
-    sumoBinary = checkBinary('sumo')
-    # sumoBinary = checkBinary('sumo-gui')
+    # sumoBinary = checkBinary('sumo')
+    sumoBinary = checkBinary('sumo-gui')
 
-    # pedestrian_test()
+    pedestrian_test()
 
-    ipa_gradient_mehtod(initial_par=[1, 1, 1, 1, 100, 100], lam_1=1/6., lam_2=1/10., run_time=1000, iters_per_par=20,
-                        total_iter_num=2, stepsize=20, sumoBinary=sumoBinary, print_mode=False)
+    # ipa_gradient_mehtod(initial_par=[1, 30, 1, 30, 100, 100], lam_1=1/2., lam_2=1/3., run_time=1000, iters_per_par=20,
+    #                     total_iter_num=2, stepsize=20, sumoBinary=sumoBinary, print_mode=True)
 
     # brute_force_mehtod(initial_par=[10, 20, 30, 40, 100, 100], lam_1=1/2., lam_2=1/5., run_time=2000, iters_per_par=10,
     #                    total_iter_num=20, par_change_idx=1, stepsize=1, sumoBinary=sumoBinary, print_mode=False)

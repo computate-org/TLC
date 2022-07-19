@@ -129,7 +129,7 @@ def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
         pedNr = 0
         for i in range(N):
             if i > next_w31:
-                print("""   <person id="ped_down_%i" depart="%i" departPos="random">
+                print("""   <person id="ped_%i" depart="%i" departPos="random">
         <personTrip from="34992983#2" to="24626686#2" arrivalPos="random"/>
     </person>""" % (pedNr, i), file=routes)
                 pedNr += 1
@@ -137,7 +137,7 @@ def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
 
             if i > next_w42:
                 print("""
-    <person id="ped_right_%i" depart="%i" departPos="random">
+    <person id="ped_%i" depart="%i" departPos="random">
         <personTrip from="96027913#2" to="30186293" arrivalPos="random"/>
     </person>""" % (pedNr, i), file=routes)
                 pedNr += 1
@@ -696,33 +696,64 @@ WALKINGAREAS = [":267701936_w0", ":267701936_w1", ":267701936_w2", ":267701936_w
 
 
 def pedestrian_test():
-    run_time = 3600
-    generate_routefile_Veberod("Veberod_intersection_pedestrian.rou.xml", run_time, 1/5., 1/6, True)
-    generate_routefile_pedestrian("Veberod_intersection_pedestrian.trip.xml", run_time, 1/15., 1/10., True)
+    run_time = 360
+    step_size = 0.1
+    generate_routefile_Veberod("Veberod_intersection_pedestrian.rou.xml", run_time, 1/6., 1/6, True)
+    generate_routefile_pedestrian("Veberod_intersection_pedestrian.trip.xml", run_time, 1/15., 1/20., True)
 
     traci.start(
-        [sumoBinary, "-c", "Veberod_intersection_pedestrian.sumocfg", "--step-length", "0.1", "--fcd-output.geo", "true",\
+        [sumoBinary, "-c", "Veberod_intersection_pedestrian.sumocfg", "--step-length", str(step_size), "--fcd-output.geo", "true",\
          "--fcd-output", "veberod-fcd.xml", "--no-step-log", "--no-warnings"])
     # we start with phase 0 --- 42 green (road 2)
     # <phase duration="200" state="GrGr"/>
     traci.trafficlight.setPhase(TLID, VEHICLE_GREEN_PHASE)
-    step = 0
-    min_green_time = 5
+    step = 0.
+    total_ped_waiting_time = 0.
+    largest_ped_id = 0
     wait_condition = [False, False]
-    while step < 3600:
-        step += 1
+    while step < run_time:
+        step += step_size
         traci.simulationStep()
-        wait_condition = check_waiting_persons()
-        # print(wait_condition)
-        if wait_condition[0] and wait_condition[1]:
-            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_all)
-        elif wait_condition[0]:
-            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_13)
-        elif wait_condition[1]:
-            traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_24)
+        total_ped_waiting_time += step_size * get_ped_waiting_time()
+        largest_ped_id = get_largest_ped_id(largest_ped_id)
+
+        if traci.trafficlight.getPhase(TLID) not in [1, 4, 7]:
+            # wait_condition = check_baseline_policy()
+            wait_condition = check_policy_1(3, 3, 5, 5)
+            # print(wait_condition)
+
+            if wait_condition[0] and wait_condition[1]:
+                traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_all)
+            elif wait_condition[0]:
+                traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_13)
+            elif wait_condition[1]:
+                traci.trafficlight.setPhase(TLID, PEDESTRIAN_GREEN_PHASE_24)
+    print("mean_ped_waiting_time: " + str(total_ped_waiting_time/largest_ped_id))
 
 
-def check_waiting_persons():
+def get_largest_ped_id(largest_ped_id):
+    for wa in WALKINGAREAS:
+        peds = traci.edge.getLastStepPersonIDs(wa)
+        for ped in peds:
+            tmp = int(ped.split("_")[1])
+            if tmp > largest_ped_id:
+                largest_ped_id = tmp
+    return largest_ped_id
+
+def get_ped_waiting_time():
+    total_waiting_num = 0
+    for wa in WALKINGAREAS:
+        peds = traci.edge.getLastStepPersonIDs(wa)
+        for ped in peds:
+            if traci.person.getWaitingTime(ped)>0:
+                total_waiting_num += 1
+
+    return total_waiting_num
+
+
+
+# baseline policy: default no traffic light(horizontal with higher priority); any person wait for more than 1 sec, light would on
+def check_baseline_policy():
     wait = [False, False]
     for wa in WALKINGAREAS:
         peds = traci.edge.getLastStepPersonIDs(wa)
@@ -744,6 +775,45 @@ def check_waiting_persons():
                     return wait
     return wait
 
+
+#policy 1: push the button when either queue larger than threshold(s_3/s_4) or waiting longer than (theta_3/theta_4) sec
+def check_policy_1(s_3, s_4, theta_3, theta_4):
+    waiting_num_13 = 0
+    waiting_num_24 = 0
+
+    wait = [False, False]
+    numWaiting_13 = traci.trafficlight.getServedPersonCount(TLID, PEDESTRIAN_GREEN_PHASE_13)
+    numWaiting_24 = traci.trafficlight.getServedPersonCount(TLID, PEDESTRIAN_GREEN_PHASE_24)
+    for wa in WALKINGAREAS:
+        peds = traci.edge.getLastStepPersonIDs(wa)
+        for ped in peds:
+            #ped is to cross 13
+            if traci.person.getNextEdge(ped) in CROSSING_13:
+                if traci.person.getWaitingTime(ped) >= theta_3:
+                    print("%s: pedestrian %s pushes the button to cross 13 when MAX_WAITING_TIME occurs(waiting: %s)" %
+                          (traci.simulation.getTime(), ped, numWaiting_13))
+                    return [True, False]
+                else:
+                    waiting_num_13 += 1
+                    if waiting_num_13 > s_3:
+                        print("%s: pedestrian %s pushes the button to cross 13 when LONG_QUEUE occurs(waiting: %s)" %
+                              (traci.simulation.getTime(), ped, numWaiting_13))
+                        return [True, False]
+
+            #ped is to cross 24
+            elif traci.person.getNextEdge(ped) in CROSSING_24:
+                if traci.person.getWaitingTime(ped) >= theta_4:
+                    print("%s: pedestrian %s pushes the button to cross 24 when MAX_WAITING_TIME occurs(waiting: %s)" %
+                          (traci.simulation.getTime(), ped, numWaiting_24))
+                    return [False, True]
+                else:
+                    waiting_num_24 += 1
+                    if waiting_num_24 > s_4:
+                        print("%s: pedestrian %s pushes the button to cross 24 when LONG_QUEUE occurs(waiting: %s)" %
+                              (traci.simulation.getTime(), ped, numWaiting_24))
+                        return [False, True]
+
+    return wait
 
 
 def get_options():

@@ -461,13 +461,13 @@
     <tlLogic id="267701936" type="static" programID="0" offset="0">
         <phase duration="20000" state="ggggrrrr"/>
         <phase duration="10" state="grgrrGrG"/>
-        <phase duration="5"  state="grgrrrrr"/>
+        <phase duration="2"  state="grgrrrrr"/>
         <phase duration="200000" state="ggggrrrr"/>
         <phase duration="10" state="rgrgGrGr"/>
-        <phase duration="5"  state="rgrgrrrr"/>
+        <phase duration="3"  state="rgrgrrrr"/>
         <phase duration="20000" state="ggggrrrr"/>
         <phase duration="10" state="rrrrGGGG"/>
-        <phase duration="5"  state="rrrrrrrr"/>
+        <phase duration="2"  state="rrrrrrrr"/>
         <phase duration="20000" state="ggggrrrr"/>
     </tlLogic>
 

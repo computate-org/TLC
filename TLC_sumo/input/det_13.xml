@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-07-26 16:21:13 by Eclipse SUMO GUI Version 1.10.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="./input/Veberod_intersection_pedestrian.net.xml"/>
+        <route-files value="./input/Veberod_intersection_pedestrian.rou.xml,./input/Veberod_intersection_pedestrian.trip.xml"/>
+        <additional-files value="./input/Veberod_intersection_pedestrian.add.xml"/>
+    </input>
+
+    <output>
+        <fcd-output value="./output/veberod-fcd.xml"/>
+        <fcd-output.geo value="true"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+        <step-length value="0.2"/>
+    </time>
+
+    <report>
+        <no-warnings value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="60616"/>
+    </traci_server>
+
+    <gui_only>
+        <gui-settings-file value="./input/viewsettings.xml"/>
+        <tracker-interval value="0.2"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<detector xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/det_e2_file.xsd">
+   <interval begin="0.00" end="71.00" id="det_13" sampledSeconds="84.27" nVehEntered="6" nVehLeft="5" nVehSeen="6" meanSpeed="10.89" meanTimeLoss="8.62" meanOccupancy="3.33" maxOccupancy="5.74" meanMaxJamLengthInVehicles="0.00" meanMaxJamLengthInMeters="0.00" maxJamLengthInVehicles="0" maxJamLengthInMeters="0.00" jamLengthInVehiclesSum="0" jamLengthInMetersSum="0.00" meanHaltingDuration="0.60" maxHaltingDuration="0.60" haltingDurationSum="3.60" meanIntervalHaltingDuration="0.60" maxIntervalHaltingDuration="0.60" intervalHaltingDurationSum="3.60" startedHalts="6.00" meanVehicleNumber="1.19" maxVehicleNumber="3" />
+</detector>

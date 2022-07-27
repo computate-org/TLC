@@ -459,8 +459,8 @@
     </edge>
 
     <tlLogic id="267701936" type="static" programID="1" offset="0">
-        <phase duration="10" state="rrrrrrrr"/>
-        <phase duration="10" state="gggggggg"/>
+        <phase duration="200" state="grgrrGrG"/>
+        <phase duration="200" state="rgrgGrGr"/>
     </tlLogic>
 
     <tlLogic id="267701936" type="static" programID="0" offset="0">

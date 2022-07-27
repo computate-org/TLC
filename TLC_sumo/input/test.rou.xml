@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-06-28 14:52:46 by Eclipse SUMO netedit Version 1.10.0
+<!-- generated on 2022-07-18 12:49:02 by Eclipse SUMO netedit Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
@@ -32,7 +32,7 @@
     </pedestrian>
 
     <netedit>
-        <route-files value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.rou.xml"/>
+        <route-files value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/test.rou.xml"/>
     </netedit>
 
     <report>
@@ -43,6 +43,10 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <flow id="flow_1" begin="0.00" from="96027913#0" to="311389510#1" end="3600.00" number="396"/>
-    <flow id="flow_0" begin="0.00" from="-355113043#1" to="-34992983#1" end="3600.00" number="450"/>
+    <person id="person_0" depart="0.00">
+        <personTrip from="-24626686#2" to="-34992983#3"/>
+    </person>
+    <person id="person_1" depart="0.00">
+        <personTrip from="96027913#2" to="30186293"/>
+    </person>
 </routes>

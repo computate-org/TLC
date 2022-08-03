@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-07-26 16:21:13 by Eclipse SUMO GUI Version 1.10.0
+<!-- generated on 2022-08-02 14:42:41 by Eclipse SUMO GUI Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
@@ -17,7 +17,7 @@
     <time>
         <begin value="0"/>
         <end value="3600"/>
-        <step-length value="0.2"/>
+        <step-length value="1"/>
     </time>
 
     <report>
@@ -26,17 +26,17 @@
     </report>
 
     <traci_server>
-        <remote-port value="60616"/>
+        <remote-port value="59706"/>
     </traci_server>
 
     <gui_only>
         <gui-settings-file value="./input/viewsettings.xml"/>
-        <tracker-interval value="0.2"/>
+        <tracker-interval value="1"/>
     </gui_only>
 
 </configuration>
 -->
 
 <detector xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/det_e1_file.xsd">
-    <interval begin="0.00" end="71.00" id="det_13_1" nVehContrib="6" flow="304.23" occupancy="12.13" speed="3.48" harmonicMeanSpeed="3.48" length="5.00" nVehEntered="6"/>
+    <interval begin="0.00" end="49.00" id="det_13_1" nVehContrib="7" flow="514.29" occupancy="30.63" speed="2.39" harmonicMeanSpeed="2.33" length="5.00" nVehEntered="7"/>
 </detector>

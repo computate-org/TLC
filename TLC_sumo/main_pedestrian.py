@@ -328,26 +328,25 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
         idx_ = 1
 
     # alpha1=0
-    if det_veh_num[idx][-2] > 0 and det_veh_num[idx][-1] == 0:
-        if (queue_length[idx_][-1] > 0 and not f[idx_]) or \
-                (queue_length[idx_][-1] == 0 and f[idx] and not f[idx_]):
-
+    if det_veh_num[idx][-2] > 0 and det_veh_num[idx][-1] == 0 and \
+            ((queue_length[idx_][-1] > 0 and not f[idx_]) or
+             (queue_length[idx_][-1] == 0 and f[idx] and not f[idx_])):
             light_switch = True
             d_tau = [0] * len(theta)
             if print_mode:
                 print("alpha{}=0".format(idx))
 
     # z1=theta_1_max
-    elif last_switch >= theta[idx * 2 + 1] > (last_switch - step_size) and queue_length[idx_][-1] > 0:
+    elif last_switch >= theta[idx * 2 + 1] and queue_length[idx_][-1] > 0:
         light_switch = True
         d_tau[idx * 2 + 1] = d_tau[idx * 2 + 1] + 1
         if print_mode:
             print("z{0}=theta_{0}_max".format(idx + 1))
 
     # z1=theta_1_min
-    elif last_switch >= theta[idx] > (last_switch - 1):
-        if (f[idx] and not f[idx_]) or (
-                queue_length[idx][-1] < theta[6 + idx] and queue_length[idx_][-1] >= theta[6 + idx_]):
+    elif last_switch >= theta[idx] > (last_switch - 1) and \
+            ((f[idx] and not f[idx_]) or (
+                queue_length[idx][-1] < theta[6 + idx] and queue_length[idx_][-1] >= theta[6 + idx_])):
             light_switch = True
 
             d_tau[idx * 2] = d_tau[idx * 2] + 1
@@ -355,8 +354,8 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
                 print("z{0}=theta_{0}_min".format(idx + 1))
 
     # x1 = s1(a)
-    elif queue_length[idx][-2] > theta[idx + 6] >= queue_length[idx][-1]:
-        if last_switch >= theta[idx * 2] and queue_length[idx_][-1] >= theta[6 + idx_]:
+    elif queue_length[idx][-2] > theta[idx + 6] >= queue_length[idx][-1] and\
+            (last_switch >= theta[idx * 2] and queue_length[idx_][-1] >= theta[6 + idx_]):
             light_switch = True
 
             if alpha_rate[idx] - h[idx] == 0:
@@ -369,8 +368,8 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
                 print("x{0} = s{0}(a) G2R{0}".format(idx + 1))
 
     # x2 = s2(b)
-    elif queue_length[idx_][-2] < theta[idx_ + 6] <= queue_length[idx_][-1]:
-        if last_switch >= theta[idx * 2] and queue_length[idx][-1] < theta[idx + 6]:
+    elif queue_length[idx_][-2] < theta[idx_ + 6] <= queue_length[idx_][-1] and\
+        (last_switch >= theta[idx * 2] and queue_length[idx][-1] < theta[idx + 6]):
             light_switch = True
 
             if alpha_rate[idx_] == 0:
@@ -384,11 +383,11 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
                 print("x{0} = s{0}(b) G2R{0}".format(idx_ + 1))
 
     # x4=s4(a) --> f2=0
-    elif queue_length[idx_ + 2][-2] > theta[idx_ + 8] >= queue_length[idx_ + 2][-1]:
-        if (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and f[idx]) or \
+    elif queue_length[idx_ + 2][-2] > theta[idx_ + 8] >= queue_length[idx_ + 2][-1] and \
+            ((det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and f[idx]) or \
                 (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] > 0) or \
                 (det_veh_num[idx][-1] > 0 and queue_length[idx_][-1] > 0 and last_switch > theta[idx * 2] and not f[
-                    idx]):
+                    idx])):
             light_switch = True
             if alpha_rate[idx_ + 2] - h[idx_ + 2] == 0:
                 print("WARNING: alpha_rate{0} - h{0} == 0 when x{0} = s{0}(a)/ G2R{1}".format(idx_ + 3, idx + 1))
@@ -400,9 +399,9 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
                 print("x{0} = s{0}(a) G2R{1}".format(idx_ + 3, idx + 1))
 
     # x3 = s3(b) --> f1=1
-    elif queue_length[idx + 2][-2] < theta[idx + 8] <= queue_length[idx + 2][-1]:
-        if (det_veh_num[idx][-1] > 0 and last_switch >= theta[idx * 2] and not f[idx_]) or \
-                (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and not f[idx_]):
+    elif queue_length[idx + 2][-2] < theta[idx + 8] <= queue_length[idx + 2][-1] and \
+            ((det_veh_num[idx][-1] > 0 and last_switch >= theta[idx * 2] and not f[idx_]) or \
+                (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and not f[idx_])):
             light_switch = True
 
             if alpha_rate[idx + 2] == 0:
@@ -417,9 +416,9 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
                 print("x{0} = s{0}(b) G2R{1}".format(idx + 3, idx + 1))
 
     #   y1 = theta3 --> f1 = 1
-    elif last_push_button >= theta[idx + 4] > (last_push_button - step_size):
-        if (det_veh_num[idx][-1] > 0 and last_switch >= theta[idx * 2] and not f[idx_]) or \
-                (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and not f[idx_]):
+    elif last_push_button >= theta[idx + 4] > (last_push_button - step_size) and \
+            ((det_veh_num[idx][-1] > 0 and last_switch >= theta[idx * 2] and not f[idx_]) or \
+                (det_veh_num[idx][-1] == 0 and queue_length[idx_][-1] == 0 and not f[idx_])):
 
             light_switch = True
             d_tau = np.zeros(len(theta))
@@ -497,9 +496,9 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
          step_size: time passed for each simulation step
          """
 
-    generate_routefile_Veberod("Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
+    generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
                                demand_scale * lam[1], fix_seed)
-    generate_routefile_pedestrian("Veberod_intersection_pedestrian.trip.xml", run_time, demand_scale * lam[2],
+    generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", run_time, demand_scale * lam[2],
                                   demand_scale * lam[3], fix_seed)
 
     # one run renewal
@@ -650,9 +649,9 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
             print('------------------------------------')
             # print("alpha:" + str(alpha_1) + ">>>>" + str(alpha_2))
             # print("veh_ids: " + str(traci.lanearea.getLastStepVehicleIDs("det_13")) + ">>>>" + str(traci.lanearea.getLastStepVehicleIDs("det_42")))
-            print("jam:" + str(np.array(jam)))
+            print("jam:" + str(jam))
             print("arrival rate: " + str(alpha_rate))
-            print("beta:" + str(np.array(beta)))
+            print("beta:" + str(beta))
             print("departure rate: " + str(beta_rate))
             print("depart_veh_num: " + str(depart_veh_num[0][-1]) + ">>>>" + str(depart_veh_num[1][-1]))
             print("depart_ped_num: " + str(depart_ped_num[0][-1]) + ">>>>" + str(depart_ped_num[1][-1]))
@@ -677,6 +676,7 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
         if print_mode:
             print("time:" + str(step))
             print("last_switch:" + str(last_switch))
+            print("last_push_button: " + str(last_push_button))
             print("green in 13:" + str(green_1))
             # print("jam_length_vehicle:  " + str(traci.lanearea.getJamLengthVehicle("det_13")))
             # print("last_step_veh_num:  " + str(traci.lanearea.getLastStepVehicleNumber("det_13")))
@@ -739,20 +739,16 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
         performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total])
 
         print("d_L:")
-        pprint(d_L)
+        pprint(d_L_list[-1])
+        print("for par " + str(par) + ":")
+        print(performance_list[-1])
+        print("mean_waiting_time_total ----" + str([i[-1] for i in performance_list]))
+        print("==================================================================================================")
 
-        if print_mode:
-            print("d_L:")
-            pprint(d_L_list)
-            print("==================================================================================================")
-            print("for par " + str(par) + ":")
-            print("mean_waiting_time_total ----" + str([i[-1] for i in performance_list]))
-            print("==================================================================================================")
-
-    return np.mean(d_L_list, 0), np.mean(performance_list, 1)
+    return np.mean(d_L_list, 0), np.mean(performance_list, 0)
 
 
-def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, par_update_step_size, run_time, total_iter_num, iters_per_par):
+def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, par_update_step_size, run_time, total_iter_num, iters_per_par, print_mode):
     """ run ipa method to update par"""
 
     par_list = [[i] for i in initial_par]
@@ -765,13 +761,22 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
     while iter_num < total_iter_num:
         iter_num += 1
 
-        # if iter_num == 30:
-        #     stepsize = stepsize / 2.
-        # if iter_num == 50:
-        #     stepsize = stepsize / 2.
+        if iter_num == 3:
+            par_update_step_size = par_update_step_size / 2.
+        if iter_num == 5:
+            par_update_step_size = par_update_step_size / 2.
+        if iter_num == 10:
+            par_update_step_size = par_update_step_size / 2.
+        if iter_num == 14:
+            par_update_step_size = par_update_step_size / 2.
+        if iter_num == 18:
+            par_update_step_size = par_update_step_size / 2.
+        if iter_num == 25:
+            par_update_step_size = par_update_step_size / 2.
+
 
         d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                        iters_per_par,  print_mode=True)
+                                        iters_per_par,  print_mode)
 
         # update performance
         performance_list.append(performance)
@@ -779,14 +784,15 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         print('****************************************************************************')
         print("dL: " + str(d_L))
         for par in par_list:
-            print([round(i, 3) for i in par])
+            print(str([round(i, 3) for i in par])+",")
 
         print("------")
-        print([round(i, 3) for i in [i[-1] for i in performance_list]])
-
+        # print([round(i, 3) for i in [i[-1] for i in performance_list]])
+        for j in range(5):
+            print(str([round(i, 3) for i in [i[j] for i in performance_list]])+",")
         print("------")
         for i in range(len(d_L)):
-            print([round(dl[i], 3) for dl in d_L_list])
+            print(str([round(dl[i], 3) for dl in d_L_list])+",")
 
         print('****************************************************************************')
 
@@ -801,9 +807,9 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         # theta_2_max
         par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
         # theta_3
-        par_list[4].append(par_list[4][-1] - par_update_step_size * d_L[4])
+        par_list[4].append(max(0.1, par_list[4][-1] - par_update_step_size * d_L[4]))
         # theta_4
-        par_list[5].append(par_list[5][-1] - par_update_step_size * d_L[5])
+        par_list[5].append(max(0.1, par_list[5][-1] - par_update_step_size * d_L[5]))
         # s_1
         par_list[6].append(max(0.1, par_list[6][-1] - par_update_step_size * d_L[6]))
         # s_2
@@ -815,11 +821,10 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
 
 
 if __name__ == "__main__":
-    # sumoBinary = checkBinary('sumo')
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
+    # sumoBinary = checkBinary('sumo-gui')
 
     # pedestrian_baseline_test()
-    ipa_gradient_method_pedestrian(initial_par=[1,20,1,40,100,100,100,100,100,100], lam=[1/4,1/6,1/10,1/10],
-                                   demand_scale=1, step_size=1, par_update_step_size=50, run_time=2000,
-                                   total_iter_num=20, iters_per_par=1)
-
+    ipa_gradient_method_pedestrian(initial_par=[10,20,30,50,10,10,8,8,8,8], lam=[0.11,0.125,0.01,0.01],
+                                   demand_scale=1.0, step_size=1, par_update_step_size=20, run_time=600,
+                                   total_iter_num=30, iters_per_par=50, print_mode=False)

@@ -668,8 +668,12 @@ def brute_force_method(initial_par, lam_1, lam_2, run_time, iters_per_par, total
 
 
 if __name__ == "__main__":
-    # sumoBinary = checkBinary('sumo')
-    sumoBinary = checkBinary('sumo-gui')
+    sumoBinary = checkBinary('sumo')
+    # sumoBinary = checkBinary('sumo-gui')
+    generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", 2000, 1/5.,
+                               1/6., False)
+    generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", 2000, 1/10.,
+                                 1/12., False)
 
     # pedestrian_baseline_test()
 

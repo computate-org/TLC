@@ -111,7 +111,7 @@ def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
         pedNr = 0
         for i in range(N):
             if i > next_w31:
-                print("""   <person id="ped_%i" depart="%i" departPos="random">
+                print("""   <person id="ped_%i" depart="%i" >
         <personTrip from="34992983#2" to="24626686#2" arrivalPos="random"/>
     </person>""" % (pedNr, i), file=routes)
                 pedNr += 1
@@ -119,7 +119,7 @@ def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
 
             if i > next_w42:
                 print("""
-    <person id="ped_%i" depart="%i" departPos="random">
+    <person id="ped_%i" depart="%i" >
         <personTrip from="96027913#2" to="30186293" arrivalPos="random"/>
     </person>""" % (pedNr, i), file=routes)
                 pedNr += 1

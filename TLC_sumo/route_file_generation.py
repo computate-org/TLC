@@ -14,7 +14,7 @@ def generate_routefile(run_time, lam1, lam2, fix_seed):
         seed = random.randrange(sys.maxsize)
         random.seed(seed)
 
-    print("Seed was:", seed)
+    # print("Seed was:", seed)
 
     N = run_time  # number of time steps
     # demand per second from different directions
@@ -54,7 +54,7 @@ def generate_routefile_Veberod(file_name, run_time, lam1, lam2, fix_seed):
         seed = random.randrange(sys.maxsize)
     random.seed(seed)
 
-    print("Seed was:", seed)
+    # print("Seed was:", seed)
 
     N = run_time  # number of time steps
     # demand per second from different directions
@@ -95,7 +95,7 @@ def generate_routefile_pedestrian(file_name, run_time, lam1, lam2, fix_seed):
         seed = random.randrange(sys.maxsize)
     random.seed(seed)
 
-    print("Seed was:", seed)
+    # print("Seed was:", seed)
 
     N = run_time  # number of time steps
     # demand per second from different directions

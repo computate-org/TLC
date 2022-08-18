@@ -734,18 +734,54 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("extreme d_L  " + str(d_L) + " ----- delete")
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            iters-=1
             continue
         d_L_list.append(d_L)
         performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total])
 
-        print("d_L:")
-        pprint(d_L_list[-1])
-        print("for par " + str(par) + ":")
-        print(performance_list[-1])
-        print("mean_waiting_time_total ----" + str([i[-1] for i in performance_list]))
-        print("==================================================================================================")
+        # print("d_L:")
+        # pprint(d_L_list[-1])
+        # print("for par " + str(par) + ":")
+        # print(performance_list[-1])
+        if iters == iters_per_par:
+            print("mean_waiting_time_total ----" + str([i[-1] for i in performance_list]))
+            print("avg: " + str(np.mean([i[-1] for i in performance_list])))
+            print("==============")
 
     return np.mean(d_L_list, 0), np.mean(performance_list, 0)
+
+
+def get_par_update_step_size(last_step_size, d_L_list, theta_min, theta_max, s_min, s_max):
+    tmp = float('inf')
+    for idx in range(len(d_L_list)):
+        d_par = d_L_list[idx]
+        # contains sign change
+        if any(i < 0 for i in d_par[-3:]) and any(i > 0 for i in d_par[-3:]):
+            tmp = last_step_size / 1.1
+            d_L_list_transpose = [list(i) for i in zip(*d_L_list)]
+            d_theta_tmp = abs(max(d_L_list_transpose[-1][0:6], key=abs))
+            d_s_tmp = abs(max(d_L_list_transpose[-1][6:], key=abs))
+            if d_theta_tmp * tmp > theta_max:
+                tmp = min(tmp, theta_max/d_theta_tmp)
+            if d_s_tmp * tmp > s_max:
+                tmp = min(tmp, s_max/d_s_tmp)
+            return tmp
+        if d_par[-1] == 0:
+            continue
+        # for theta parameter (green time threshold) [theta_min, theta_max]s
+        if idx <= 5:
+            if abs(last_step_size * d_par[-1]) < theta_min:
+                tmp = min(tmp, abs(theta_min/d_par[-1]))
+            if abs(last_step_size * d_par[-1]) > theta_max:
+                tmp = min(tmp, abs(theta_max / d_par[-1]))
+        else:
+            if abs(last_step_size * d_par[-1]) < s_min:
+                tmp = min(tmp, abs(s_min / d_par[-1]))
+            if abs(last_step_size * d_par[-1]) > s_max:
+                tmp = min(tmp, abs(s_max / d_par[-1]))
+    if tmp == float('inf'):
+        tmp = last_step_size
+    return tmp
 
 
 def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, par_update_step_size, run_time, total_iter_num, iters_per_par, print_mode):
@@ -761,19 +797,18 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
     while iter_num < total_iter_num:
         iter_num += 1
 
-        if iter_num == 3:
-            par_update_step_size = par_update_step_size / 2.
-        if iter_num == 5:
-            par_update_step_size = par_update_step_size / 2.
-        if iter_num == 10:
-            par_update_step_size = par_update_step_size / 2.
-        if iter_num == 14:
-            par_update_step_size = par_update_step_size / 2.
-        if iter_num == 18:
-            par_update_step_size = par_update_step_size / 2.
-        if iter_num == 25:
-            par_update_step_size = par_update_step_size / 2.
-
+        # if iter_num == 3:
+        #     par_update_step_size = par_update_step_size / 2.
+        # if iter_num == 5:
+        #     par_update_step_size = par_update_step_size / 2.
+        # if iter_num == 10:
+        #     par_update_step_size = par_update_step_size / 2.
+        # if iter_num == 14:
+        #     par_update_step_size = par_update_step_size / 2.
+        # if iter_num == 18:
+        #     par_update_step_size = par_update_step_size / 2.
+        # if iter_num == 25:
+        #     par_update_step_size = par_update_step_size / 2.
 
         d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
                                         iters_per_par,  print_mode)
@@ -794,10 +829,9 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         for i in range(len(d_L)):
             print(str([round(dl[i], 3) for dl in d_L_list])+",")
 
-        print('****************************************************************************')
-
         # update parameters
-
+        par_update_step_size = get_par_update_step_size(par_update_step_size, [list(i) for i in zip(*d_L_list)], 1., 4., 0.5, 1.5)
+        print("par_update_step_size: " + str(par_update_step_size))
         # theta_1_min
         par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
         # theta_1_max
@@ -819,6 +853,8 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         # s_4
         par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
 
+        print('****************************************************************************')
+
 
 if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
@@ -826,5 +862,5 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
     ipa_gradient_method_pedestrian(initial_par=[10,20,30,50,10,10,8,8,8,8], lam=[0.11,0.125,0.01,0.01],
-                                   demand_scale=1.0, step_size=1, par_update_step_size=20, run_time=600,
-                                   total_iter_num=30, iters_per_par=50, print_mode=False)
+                                   demand_scale=1.9, step_size=1, par_update_step_size=30, run_time=600,
+                                   total_iter_num=30, iters_per_par=100, print_mode=False)

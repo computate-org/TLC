@@ -54,7 +54,7 @@ def pedestrian_baseline_test():
         tmp_5 = []
 
         # run 20 times per par
-        for iter_num in range(1):
+        for iter_num in range(5):
             mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_all \
                 = one_iter_ped_fix_policy(run_time, step_size, [veh_lam_1, veh_lam_2, ped_lam_1, ped_lam_2],
                                           demand_scale)
@@ -546,25 +546,29 @@ def update_result(d_L_list, performance_list, d_L, queue_length, depart_veh_num,
     return theta, d_L_list, performance_list, par_list, par_update_step_size
 
 
-def update_par_check(queue_length, step_per_iter, gradient_stable_flag=True):
-    update_par_flag = False
+def update_par_check(alpha_rate_list, queue_length, step_per_iter, step_size, gradient_stable_flag=True):
+    gradient_flag = not gradient_stable_flag
+    queue_length_flag = False
+    alpha_rate_flag = False
 
-    if step_per_iter < 600:
-        return update_par_flag
-    if (not gradient_stable_flag) and step_per_iter > 600:
+    if step_per_iter < 360/step_size:
+        return False
+    if step_per_iter > 1200/step_size:
         return True
 
-    if step_per_iter < 600:
-        tmp_pre = sum([sum(l[0:int(step_per_iter/2)]) for l in queue_length])
-        tmp_cur = sum([sum(l[int(step_per_iter/2):])for l in queue_length])  # total queue num for last minute
-    else:
-        tmp_pre = sum([sum(l[-(60*10):-(60*5)]) for l in queue_length])
-        tmp_cur = sum([sum(l[-(60*6):]) for l in queue_length])  # total queue num for last minute
-    try:
-        if (tmp_cur-tmp_pre)/tmp_pre > 0.4:
-            update_par_flag = True
-    except:
-        pass
+    ql_tmp_pre = sum([sum(l[int(-(60*6)/step_size):int(-(60*3)/step_size)]) for l in queue_length])
+    ql_tmp_cur = sum([sum(l[int(-(60*3)/step_size):]) for l in queue_length])  # total queue num for last minute
+    if (ql_tmp_cur - ql_tmp_pre) / ql_tmp_pre > 0.4:
+        queue_length_flag = True
+
+    for i in range(len(alpha_rate_list[0])):
+        ar_tmp_pre = np.mean([alpha[i] for alpha in alpha_rate_list[int(-(60*6)/step_size):int(-(60*3)/step_size)]])
+        ar_tmp_cur = np.mean([alpha[i] for alpha in alpha_rate_list[int(-(60*3)/step_size):]])
+        if abs(ar_tmp_cur-ar_tmp_pre)/ar_tmp_pre > 0.4:
+            alpha_rate_flag = True
+            break
+
+    update_par_flag = gradient_flag and (queue_length_flag or alpha_rate_flag )
 
     return update_par_flag
 
@@ -592,7 +596,7 @@ def get_par_update_step_size(last_step_size, d_L_list, theta_min, theta_max, s_m
     transposed_d_L_list = [list(i) for i in zip(*d_L_list)]
     for idx in range(len(transposed_d_L_list)):
         d_par = transposed_d_L_list[idx]
-        # contains sign change
+        # contains sign change in last 3
         if any(i < 0 for i in d_par[-3:]) and any(i > 0 for i in d_par[-3:]):
             tmp = last_step_size / 1.1
             d_theta_tmp = abs(max(d_L_list[-1][0:6], key=abs))
@@ -1218,6 +1222,7 @@ def one_iter_ped_adaptive_event_driven(theta, lam, demand_scale, step_size, run_
     jam = [[] for _ in range(4)]  # list of vehicle/ped ids in the queue in the last time step
     alpha_rate = [0] * 4
     beta_rate = [0] * 4
+    alpha_rate_list = []
 
     # free departure rate
     h = [0.55] * 4
@@ -1345,6 +1350,8 @@ def one_iter_ped_adaptive_event_driven(theta, lam, demand_scale, step_size, run_
             jam[3] = []
             alpha_rate[3] = beta_rate[3]
 
+        alpha_rate_list.append(alpha_rate)
+
         if print_mode:
             print('------------------------------------')
             print("jam:" + str(jam))
@@ -1387,7 +1394,7 @@ def one_iter_ped_adaptive_event_driven(theta, lam, demand_scale, step_size, run_
             print("d_x: " + str(d_x))
             print('===========================================================================================')
 
-        update_par_flag = update_par_check([l[100:] for l in queue_length], step-100, gradient_stable_flag)
+        update_par_flag = update_par_check([alpha[100:] for alpha in alpha_rate_list], [l[100:] for l in queue_length], step-100, step_size, gradient_stable_flag)
 
     traci.close()
     sys.stdout.flush()
@@ -1408,16 +1415,22 @@ def repeat_iters_event_driven(par, lam, demand_scale, step_size, run_time, iters
         fix_seed = True
 
     iters = 0
+    extreme_iter = 0
+    extreme_threshold = 100
     while iters < iters_per_par:
         iters += 1
         update_time, d_L, queue_length, depart_veh_num, depart_ped_num = \
             one_iter_ped_adaptive_event_driven(par, lam, demand_scale, step_size, run_time, fix_seed, gradient_stable_flag, print_mode, sumoBinary)
         # exclude the outliers
-        if np.any(np.array(d_L) > 100) or np.any(np.array(d_L) < -100):
+        if np.any(np.array(d_L) > extreme_threshold) or np.any(np.array(d_L) < -extreme_threshold):
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("extreme d_L  " + str(d_L) + " ----- delete")
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            extreme_iter += 1
             iters -= 1
+            extreme_threshold = 2**(extreme_iter) * 100
+            print("extreme_threshold: " + str(extreme_threshold))
+
             continue
 
         start_record_time = 100  # in order to eliminating the unstable simulation starting range
@@ -1463,13 +1476,13 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
     par_update_step_size = 30
     while update_time_list[-1] < run_time:
         if not disturb_flag and recover_time == 0 and update_time_list[-1] > 10000:
-            lam[0] = lam[0] * 1.5
+            lam[1] = lam[1] * 1.5
             disturb_flag = True
             disturb_time = update_time_list[-1]
-        # if disturb_flag and update_time_list[-1] - disturb_time > 20000:
-        #     lam[0] = lam[0]/1.5
-        #     disturb_flag = False
-        #     recover_time = update_time_list[-1]
+        if disturb_flag and update_time_list[-1] - disturb_time > 20000:
+            lam[1] = lam[1]/1.5
+            disturb_flag = False
+            recover_time = update_time_list[-1]
 
 
         iter_num += 1
@@ -1497,7 +1510,7 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
         print(update_time_list[1:])
 
         # update parameters
-        par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 0.8, 3., 0.5, 1.5)
+        par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 0.8, 3., 0.5, 1.)
         print("par_update_step_size: " + str(par_update_step_size))
         # theta_1_min
         par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
@@ -1525,14 +1538,27 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
     print("disturb time: " + str(disturb_time))
     print("recover time: " + str(recover_time))
 
+
 if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
-    # pedestrian_baseline_test()
-    # ipa_gradient_method_pedestrian(initial_par=[9.385, 10.39, 0.1, 46.698, 8.88, 8.191, 0.1, 2.508, 8, 8], lam=[0.11*1.5, 0.125, 0.01, 0.01],
-    #                                demand_scale=1.5, step_size=1, par_update_step_size=30, run_time=1000,
-    #                                total_iter_num=1, iters_per_par=30, print_mode=False)
+    pedestrian_baseline_test()
+
+    # ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[1/6., 1/6., 1/10., 1/20.],
+    #                                demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
+    #                                total_iter_num=1, iters_per_par=1, print_mode=False)
+
+    # for lam3 in [1/10., 1/15, 1/20, 1/25]:
+    #
+        # ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
+        #                                lam=[1/6., 1/6., lam3, 1 / 20.],
+        #                                demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
+        #                                total_iter_num=20, iters_per_par=30, print_mode=False)
+    #     print("lam3: " + str(lam3))
+    #     print('================================================================')
+
+
 
     # event driven + sequential one time
     # ipa_gradient_method_pedestrian_sequential(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],
@@ -1541,7 +1567,7 @@ if __name__ == "__main__":
     #                                           print_mode=False)
 
     # event driven + parallel repeat
-    ipa_gradient_method_pedestrian_event_driven(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],
-                                                lam=[0.11, 0.125, 0.01, 0.01],
-                                                demand_scale=1.5, step_size=1, run_time=40000, iters_per_par=20,
-                                                print_mode=False)
+    # ipa_gradient_method_pedestrian_event_driven(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],
+    #                                             lam=[0.11, 0.125, 0.01, 0.01],
+    #                                             demand_scale=1.2, step_size=1, run_time=50000, iters_per_par=50,
+    #                                             print_mode=False)

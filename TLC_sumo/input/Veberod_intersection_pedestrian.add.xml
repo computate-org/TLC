@@ -7,4 +7,5 @@
    <e1Detector id="det_13_1" lane="96027913#0_1" pos="2.15" freq="300.00" file="det_13_1.xml"/>
    <e1Detector id="det_42_0" lane="-24626686#1_1" pos="16" freq="300.00" file="det_42_0.xml"/>
    <e1Detector id="det_42_4" lane="-355113043#1_1" pos="4.96" freq="300.00" file="det_42_4.xml"/>
+   <timedEvent type="SaveTLSStates" source="267701936" dest="tl_output.xml"/>
  </additional>

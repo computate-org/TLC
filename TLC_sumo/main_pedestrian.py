@@ -1543,11 +1543,11 @@ if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
-    pedestrian_baseline_test()
+    # pedestrian_baseline_test()
 
-    # ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[1/6., 1/6., 1/10., 1/20.],
-    #                                demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
-    #                                total_iter_num=1, iters_per_par=1, print_mode=False)
+    ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[1/6., 1/6., 1/10., 1/20.],
+                                   demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
+                                   total_iter_num=1, iters_per_par=1, print_mode=False)
 
     # for lam3 in [1/10., 1/15, 1/20, 1/25]:
     #

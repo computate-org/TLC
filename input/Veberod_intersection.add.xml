@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+   <laneAreaDetector id="det_13" lanes="96027913#0_0 96027913#2_0"  freq="300.00" file="det_13.xml" timeThreshold="1" jamThreshold="12" speedThreshold="1.5"/>
+   <laneAreaDetector id="det_42" lanes="-355113043#1_0 -24626686#2_0 -24626686#1_0" freq="300.00" file="det_24.xml" timeThreshold="1" jamThreshold="12" speedThreshold="1.5"/>
+   <e1Detector id="det_13_0" lane="96027913#2_0" pos="66.97" freq="300.00" file="det_13_0.xml"/>
+   <e1Detector id="det_13_1" lane="96027913#0_0" pos="2.15" freq="300.00" file="det_13_1.xml"/>
+   <e1Detector id="det_42_0" lane="-24626686#1_0" pos="15.54" freq="300.00" file="det_42_0.xml"/>
+   <e1Detector id="det_42_4" lane="-355113043#1_0" pos="4.96" freq="300.00" file="det_42_4.xml"/>
+ </additional>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+    <input>
+        <!-- <net-file value="tlc_single_straight.net.xml"/> -->
+        <!-- <route-files value="tlc_single_straight.rou.xml"/> -->
+        <!-- <additional-files value="tlc_single_straight.add.xml"/> -->
+        
+        <net-file value="Veberod_intersection_pedestrian.net.xml"/>
+        <route-files value="Veberod_intersection_pedestrian.rou.xml,Veberod_intersection_pedestrian.trip.xml"/>
+        <additional-files value="Veberod_intersection_pedestrian.add.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+    </time>
+    <!-- <time-to-teleport value="-1"/> -->
+     <gui_only>
+        <gui-settings-file value="viewsettings.xml"/>
+    </gui_only>
+
+    
+</configuration>

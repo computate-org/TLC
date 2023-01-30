@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+   <laneAreaDetector id="det_13" lanes="96027913#0_1 96027913#2_1"  freq="300.00" file="../output/det_13.xml" timeThreshold="1" jamThreshold="12" speedThreshold="1.5"/>
+   <laneAreaDetector id="det_42" lanes="-355113043#1_1 -24626686#2_1 -24626686#1_1" freq="300.00" file="../output/det_24.xml" timeThreshold="1" jamThreshold="12" speedThreshold="1.5"/>
+   <e1Detector id="det_13_0" lane="96027913#2_1" pos="67.5" freq="300.00" file="../output/det_13_0.xml"/>
+   <e1Detector id="det_13_1" lane="96027913#0_1" pos="2.15" freq="300.00" file="../output/det_13_1.xml"/>
+   <e1Detector id="det_42_0" lane="-24626686#1_1" pos="16" freq="300.00" file="../output/det_42_0.xml"/>
+   <e1Detector id="det_42_4" lane="-355113043#1_1" pos="4.96" freq="300.00" file="../output/det_42_4.xml"/>
+   <timedEvent type="SaveTLSStates" source="267701936" dest="../output/traffic_light_output.xml"/>
+ </additional>

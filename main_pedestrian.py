@@ -323,6 +323,7 @@ def get_crossing_ped_id():
 def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, alpha_rate, h, theta, d_x, d_tau, \
                                  last_switch, last_push_button, print_mode=False):
     light_switch = False
+    d_tau = [0] * len(theta)
     idx_ = 0
     if idx == 0:
         idx_ = 1
@@ -507,20 +508,15 @@ def update_result(d_L_list, performance_list, d_L, queue_length, depart_veh_num,
         [mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time,
          mean_waiting_time_total])
     d_L = np.array(d_L) * 1.0 / step_per_iter
+    if len(d_L_list) > 0:
+        d_L = 2/3 * np.array(d_L) + 1/3 * d_L_list[-1]
     d_L_list.append(d_L)
 
-    if print_mode:
-        print("------")
-        for j in range(5):
-            print(str([round(i, 3) for i in [i[j] for i in performance_list]]) + ",")
-        print("------")
-        for i in range(len(d_L)):
-            print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
 
     # update parameters
-    par_update_step_size = get_par_update_step_size(last_par_update_step_size, d_L_list, 1., 3., 0.5, 1.5)
+    par_update_step_size = get_par_update_step_size(last_par_update_step_size, d_L_list, 0.5, 2.5, 0.3, 1.5)
 
-    print("par_update_step_size: " + str(par_update_step_size))
+    # print("par_update_step_size: " + str(par_update_step_size))
     # theta_1_min
     par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
     # theta_1_max
@@ -599,33 +595,48 @@ def check_gradient_stability(d_L_list):
 def get_par_update_step_size(last_step_size, d_L_list, delta_theta_min, delta_theta_max, delta_s_min, delta_s_max):
     tmp = float('inf')
     transposed_d_L_list = [list(i) for i in zip(*d_L_list)]
+
+    d_L_theta = np.array(d_L_list[-1][0:6])
+    d_L_s = np.array(d_L_list[-1][6:])
+
+    max_dL_theta = abs(max(d_L_theta, key=abs))
+    min_dL_theta = abs(min(d_L_theta[d_L_theta != 0], key=abs))
+    max_dL_s = abs(max(d_L_s, key=abs))
+    min_dL_s = abs(min(d_L_s[d_L_s != 0], key=abs))
+    # analyze for each parameter
     for idx in range(len(transposed_d_L_list)):
         d_par = transposed_d_L_list[idx]
-        # contains sign change in last 3
-        if any(i < 0 for i in d_par[-3:]) and any(i > 0 for i in d_par[-3:]):
-            tmp = last_step_size / 1.1
-            d_theta_tmp = abs(max(d_L_list[-1][0:6], key=abs))
-            d_s_tmp = abs(max(d_L_list[-1][6:], key=abs))
-            if d_theta_tmp * tmp > delta_theta_max:
-                tmp = min(tmp, delta_theta_max / d_theta_tmp)
-            if d_s_tmp * tmp > delta_s_max:
-                tmp = min(tmp, delta_s_max / d_s_tmp)
-            return tmp
         if d_par[-1] == 0:
             continue
-        # for theta parameter (green time threshold) [theta_min, theta_max]s
-        if idx <= 5:
-            if abs(last_step_size * d_par[-1]) < delta_theta_min:
-                tmp = min(tmp, abs(delta_theta_min / d_par[-1]))
-            elif abs(last_step_size * d_par[-1]) > delta_theta_max:
-                tmp = min(tmp, abs(delta_theta_max / d_par[-1]))
-        else:
-            if abs(last_step_size * d_par[-1]) < delta_s_min:
-                tmp = min(tmp, abs(delta_s_min / d_par[-1]))
-            elif abs(last_step_size * d_par[-1]) > delta_s_max:
-                tmp = min(tmp, abs(delta_s_max / d_par[-1]))
-    if tmp == float('inf'):
-        tmp = last_step_size
+        # contains sign change in last 3
+        if any(i < 0 for i in d_par[-5:]) and any(i > 0 for i in d_par[-5:]):
+            # tmp = last_step_size / 1.2
+            # # make sure not greater than max allowable par change
+            # if max_dL_theta * tmp > delta_theta_max:
+            #     tmp = min(tmp, delta_theta_max / max_dL_theta)
+            # if max_dL_s * tmp > delta_s_max:
+            #     tmp = min(tmp, delta_s_max / max_dL_s)
+
+            tmp = min(delta_theta_min / max_dL_theta, delta_s_min / max_dL_s)
+            return tmp
+
+
+    #   if no sign change in last 3 for current par (continue optimization)
+    tmp = min(delta_theta_max/max_dL_theta, delta_s_max/max_dL_s)
+
+    #     # for theta parameter (green time threshold) [theta_min, theta_max]s
+    #     if idx <= 5:
+    #         if abs(last_step_size * d_par[-1]) < delta_theta_min:
+    #             tmp = min(tmp, abs(delta_theta_min / d_par[-1]))
+    #         elif abs(last_step_size * d_par[-1]) > delta_theta_max:
+    #             tmp = min(tmp, abs(delta_theta_max / d_par[-1]))
+    #     else:
+    #         if abs(last_step_size * d_par[-1]) < delta_s_min:
+    #             tmp = min(tmp, abs(delta_s_min / d_par[-1]))
+    #         elif abs(last_step_size * d_par[-1]) > delta_s_max:
+    #             tmp = min(tmp, abs(delta_s_max / d_par[-1]))
+    # if tmp == float('inf'):
+    #     tmp = last_step_size
     return tmp
 
 
@@ -957,8 +968,8 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
 
 def reset_par(theta, det_veh_num, queue_length, depart_veh_num, depart_ped_num):
     last_switch_dtau = [0] * len(theta)
-    d_x = [[0] * len(theta) for _ in range(4)]  # d_x[0] = [0,0,0,0,0..] , 4 flows
-    d_x_total = []  # d_L of each step; sum(d_x_total)=d_L
+    # d_x = [[0] * len(theta) for _ in range(4)]  # d_x[0] = [0,0,0,0,0..] , 4 flows
+    # d_x_total = []  # d_L of each step; sum(d_x_total)=d_L
     d_tau = [0] * len(theta)
     d_L = [0] * len(theta)
     alpha_rate_list = []
@@ -966,17 +977,19 @@ def reset_par(theta, det_veh_num, queue_length, depart_veh_num, depart_ped_num):
     queue_length = [i[-5:] for i in queue_length]
     depart_veh_num = [i[-5:] for i in depart_veh_num]
     depart_ped_num = [i[-5:] for i in depart_ped_num]
-    return last_switch_dtau, d_x, d_x_total, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, depart_ped_num
+    return last_switch_dtau, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, depart_ped_num
 
 
 # event driven sequential: whole time
 def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
     # initialization
     d_L_list = []  # append d_L at each iteration
+    d_x_total = []  # d_L of each step; sum(d_x_total)=d_L
     performance_list = []  # append[mean_waiting_time_1,mean_waiting_time_2,...] at each iteration
     par_list = [[i] for i in initial_par]
     theta = initial_par
     update_time = []
+    max_change_list = []
     NEP = [False] * 4
 
     # arrival and deprat rate
@@ -986,6 +999,7 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
     alpha_rate = [0] * 4
     beta_rate = [0] * 4
     h = [0.55] * 4  # free departure rate
+    d_x = [[0] * len(theta) for _ in range(4)]  # d_x[0] = [0,0,0,0,0..] , 4 flows
 
     det_veh_num = [[0] for _ in range(2)]  # vehicle num at each time step  [[0], [0]]
     queue_length = [[0] for _ in range(4)]  # [[0], [0], [0], [0]]
@@ -993,7 +1007,7 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
     depart_ped_num = [[0] for _ in range(2)]
 
     # one run renewal
-    last_switch_dtau, d_x, d_x_total, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, \
+    last_switch_dtau, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, \
     depart_ped_num = reset_par(theta, det_veh_num, queue_length, depart_veh_num, depart_ped_num)
 
     traci.start(
@@ -1133,32 +1147,40 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
         d_L = d_L + np.sum(np.array(d_x), 0)
         d_x_total.append(np.sum(np.array(d_x), 0))
 
+
         # check whether to update parameters
         # update_par_flag = update_par_check(alpha_rate_list, queue_length, step_per_iter, step_size,
         #                                    gradient_stable_flag)
         update_par_flag = False
-        if step_per_iter == 600:
+        update_interval = 1200
+        if step_per_iter == update_interval:
             update_par_flag = True
         if update_par_flag:
-            print('****************************************************************************')
-            for par in par_list:
-                print(str([round(i, 3) for i in par]) + ",")
-            print("------")
+
+            # different ways of calculating dL:
+            # 1. use all historical data, but update every fixed interval
+            # d_L = sum(d_x_total)
+
+            # 2. use a * interval of data, but update every fixed interval
+            # d_L = sum(d_x_total[-(2*update_interval):])
+
+
 
             theta, d_L_list, performance_list, par_list, par_update_step_size = \
                 update_result(d_L_list, performance_list, d_L, queue_length, depart_veh_num, depart_ped_num, par_list, \
                               step_per_iter, par_update_step_size, print_mode)
-            gradient_stable_flag = check_gradient_stability(d_L_list)
+            # gradient_stable_flag = check_gradient_stability(d_L_list)
             update_time.append(step)
-            for j in range(5):
-                print(str([round(i, 3) for i in [i[j] for i in performance_list]]) + ",")
-            print("------")
-            for i in range(len(d_L_list[0])):
-                print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
-            print(update_time)
-
+            # max_change_list.append(max(par_update_step_size * d_L_list[-1], key=abs))
+            # for j in range(5):
+            #     print(str([round(i, 3) for i in [i[j] for i in performance_list]]) + ",")
+            # print("------")
+            # for i in range(len(d_L_list[0])):
+            #     print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
+            # print(update_time)
+            # print(max_change_list)
             # one run renewal
-            last_switch_dtau, d_x, d_x_total, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, \
+            last_switch_dtau, d_tau, d_L, alpha_rate_list, det_veh_num, queue_length, depart_veh_num, \
             depart_ped_num = reset_par(theta, det_veh_num, queue_length, depart_veh_num, depart_ped_num)
 
             step_per_iter = 0
@@ -1166,12 +1188,14 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
     traci.close()
     sys.stdout.flush()
 
-    return d_L_list, performance_list, par_list
+    return d_L_list, performance_list, par_list, update_time
 
 
 # main function: event driven parameter updating, with sequential running
 def ipa_gradient_method_pedestrian_sequential(initial_par, lam, demand_scale, step_size, run_time, iter_num,
                                               print_mode):
+    var_list = []
+    avg_list = []
     for iter in range(iter_num):
         generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
                                    demand_scale * lam[1], False)
@@ -1179,7 +1203,23 @@ def ipa_gradient_method_pedestrian_sequential(initial_par, lam, demand_scale, st
                                       demand_scale * lam[2],
                                       demand_scale * lam[3], False)
 
-        d_L_list, performance_list, par_list = ped_adaptive_sequential(initial_par, step_size, run_time, print_mode)
+        d_L_list, performance_list, par_list, update_time = ped_adaptive_sequential(initial_par, step_size, run_time, print_mode)
+        waiting_time_list = np.transpose(performance_list)[-1][10:]
+        var_list.append(np.var(waiting_time_list))
+        avg_list.append(np.mean(waiting_time_list))
+
+        print('===================================================')
+        for j in range(5):
+            print(str([round(i, 3) for i in [i[j] for i in performance_list]]))
+        print("------")
+        for i in range(len(d_L_list[0])):
+            print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
+        print(update_time)
+
+    print('avg: ' + str(np.mean(var_list)))
+    print(var_list)
+    print('var: ' + str(np.mean(avg_list)))
+    print(avg_list)
 
 
 # event driven: one iter
@@ -1535,7 +1575,7 @@ if __name__ == "__main__":
     # event driven + sequential one time
     ipa_gradient_method_pedestrian_sequential(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],
                                               lam=[0.11, 0.125, 0.01, 0.01],
-                                              demand_scale=1.5, step_size=1, run_time=43200, iter_num=1,
+                                              demand_scale=1.5, step_size=1, run_time=43200, iter_num=30,
                                               print_mode=False)
 
     # event driven + parallel repeat

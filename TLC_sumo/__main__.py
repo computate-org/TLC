@@ -30,8 +30,7 @@ def test_topic_handler(msg):
 @app.route('/')
 def hello():
     producer = KafkaProducer(bootstrap_servers=kafka_brokers)
-    producer.send(kafka_topic, key={"key": 1}, value={"message": "hello world"})
-    producer.flush()
+    producer.send(kafka_topic, b"test")
     return "Hello World!"
 
 def main():

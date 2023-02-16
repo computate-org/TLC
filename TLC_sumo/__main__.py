@@ -1,6 +1,7 @@
 from flask import Flask
 from threading import Event
 from flask_kafka import FlaskKafka
+from kafka import  KafkaProducer
 import signal
 import os
 
@@ -28,6 +29,8 @@ def test_topic_handler(msg):
 
 @app.route('/')
 def hello():
+    producer = KafkaProducer(bootstrap_servers=kafka_brokers)
+    producer.send(kafka_topic, "test")
     return "Hello World!"
 
 def main():

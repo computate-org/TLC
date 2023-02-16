@@ -6,11 +6,13 @@ import numpy as np
 
 
 def expo_gen(lam):
-    return -1 / lam * math.log(1 - random.random())
+    # return -1 / lam * math.log(1 - random.random())
+    return np.random.exponential(1/lam)
 
-
-def uniform_gen(mean, range):
-    return np.random.uniform(mean-range, mean+range)
+def uniform_gen(lam, range_rate):
+    t = 1/lam
+    r = range_rate * t
+    return np.random.uniform(t-r, t+r)
 
 
 def generate_routefile(run_time, lam1, lam2, fix_seed):
@@ -79,6 +81,10 @@ guiShape="passenger"/>
         <route id="r42" edges="-355113043#1 -24626686#2 -24626686#1 -34992983#3 -34992983#1" />""", file=routes)
         vehNr = 0
         for i in range(N):
+            if i == 21600:
+                lam13 = lam13 * 1.2
+            if i == 36000:
+                lam13 = lam13 / 1.2
             if i > next_13:
                 print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
                     vehNr, i), file=routes)
@@ -163,7 +169,7 @@ guiShape="passenger"/>
                 print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
                     vehNr, i), file=routes)
                 vehNr += 1
-                next_13 += uniform_gen(lam13[0],lam13[1])
+                next_13 += uniform_gen(lam13[0], lam13[1])
 
             if i > next_42:
                 print('    <vehicle id="up_%i" type="v1" route="r42" depart="%i" />' % (

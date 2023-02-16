@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2022-07-20 09:52:38 by Eclipse SUMO netedit Version 1.10.0
+<!-- generated on 2023-02-05 22:23:50 by Eclipse SUMO netedit Version 1.10.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
-        <sumo-net-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.net.xml"/>
+        <sumo-net-file value="/Users/YingqingChen/Documents/GitHub/TLC/input/Veberod_intersection_pedestrian.net.xml"/>
     </input>
 
     <output>
-        <output-file value="/Users/YingqingChen/Documents/GitHub/TLC/TLC_sumo/Veberod_intersection_pedestrian.net.xml"/>
+        <output-file value="/Users/YingqingChen/Documents/GitHub/TLC/input/Veberod_intersection_pedestrian.net.xml"/>
         <output.street-names value="true"/>
     </output>
 
@@ -326,11 +326,11 @@
             <param key="origId" value="34992983"/>
         </lane>
     </edge>
-    <edge id="-355113043#1" from="469422058" to="267701934" name="Dörrödsvägen" priority="11" type="highway.secondary" shape="173.55,734.65 176.11,753.17 179.25,775.24 182.53,788.62">
-        <lane id="-355113043#1_0" index="0" allow="pedestrian" speed="11.11" length="50.64" width="2.00" shape="177.71,734.07 180.27,752.59 183.38,774.44 185.70,783.90">
+    <edge id="-355113043#1" from="469422058" to="267701934" name="Dörrödsvägen" priority="11" type="highway.secondary" length="100.00" shape="173.55,734.65 176.11,753.17 179.25,775.24 182.53,788.62">
+        <lane id="-355113043#1_0" index="0" allow="pedestrian" speed="11.11" length="100.00" width="2.00" shape="177.71,734.07 180.27,752.59 183.38,774.44 185.70,783.90">
             <param key="origId" value="355113043"/>
         </lane>
-        <lane id="-355113043#1_1" index="1" disallow="pedestrian tram rail_urban rail rail_electric rail_fast ship" speed="11.11" length="50.64" shape="175.13,734.43 177.69,752.95 180.82,774.94 183.17,784.52">
+        <lane id="-355113043#1_1" index="1" disallow="pedestrian tram rail_urban rail rail_electric rail_fast ship" speed="11.11" length="100.00" shape="175.13,734.43 177.69,752.95 180.82,774.94 183.17,784.52">
             <param key="origId" value="355113043"/>
         </lane>
         <param key="ref" value="102"/>
@@ -458,11 +458,6 @@
         <param key="ref" value="102"/>
     </edge>
 
-    <tlLogic id="267701936" type="static" programID="1" offset="0">
-        <phase duration="200" state="grgrrGrG"/>
-        <phase duration="200" state="rgrgGrGr"/>
-    </tlLogic>
-
     <tlLogic id="267701936" type="static" programID="0" offset="0">
         <phase duration="20000" state="ggggrrrr"/>
         <phase duration="10" state="grgrrGrG"/>
@@ -475,7 +470,10 @@
         <phase duration="2"  state="rrrrrrrr"/>
         <phase duration="20000" state="ggggrrrr"/>
     </tlLogic>
-
+    <tlLogic id="267701936" type="static" programID="1" offset="0">
+        <phase duration="200" state="grgrrGrG"/>
+        <phase duration="200" state="rgrgGrGr"/>
+    </tlLogic>
 
     <junction id="1112561414" type="priority" x="100.87" y="1009.80" incLanes="96027908#1_0" intLanes=":1112561414_0_0" shape="100.39,1011.33 101.64,1008.39 99.84,1011.04 100.04,1011.16 100.10,1011.21 100.18,1011.24 100.27,1011.28">
         <request index="0" response="0" foes="0" cont="0"/>

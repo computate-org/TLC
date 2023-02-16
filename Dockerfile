@@ -22,7 +22,7 @@ RUN pip install -r requirements.txt
 # Copy the content of the local src directory to the working directory
 COPY . .
 
-RUN pip install .
+WORKDIR /usr/local/src/TLC_sumo
 
 # Specify the command to run on container start
-CMD [ "TLC_sumo" ]
+CMD [ "python", "app.py" ]

@@ -1683,8 +1683,8 @@ def generate_plots(par, performance):
 
 
 
+sumoBinary = checkBinary('sumo')
 if __name__ == "__main__":
-    sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
     # pedestrian_baseline_test()

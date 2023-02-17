@@ -1539,8 +1539,8 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
     print("recover time: " + str(recover_time))
 
 
+sumoBinary = checkBinary('sumo')
 if __name__ == "__main__":
-    sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
     # pedestrian_baseline_test()

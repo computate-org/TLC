@@ -11,10 +11,10 @@ ENV FLASK_PORT=8081 \
   KAFKA_TOPIC=smartvillage-sumo-run 
 
 # Set the working directory in the container
-WORKDIR /usr/local/src
+WORKDIR /usr/local/src/TLC
 
 # Copy the dependencies file to the working directory
-COPY requirements.txt .
+COPY requirements.txt /usr/local/src/TLC/
 
 # Install any dependencies
 RUN pip install -r requirements.txt

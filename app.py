@@ -89,19 +89,19 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
 
 @app.route('/')
 def hello():
-    producer = KafkaProducer(bootstrap_servers=kafka_brokers)
-    producer.send(kafka_topic_sumo_run_report, b"test")
-    sumoBinary = checkBinary('sumo')
-    main_pedestrian.ipa_gradient_method_pedestrian(
-            initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5]
-            , lam=[10, 10, 6, 6]
-            , demand_scale=1
-            , step_size=1
-            , par_update_step_size=30
-            , run_time=1000
-            , total_iter_num=10
-            , iters_per_par=5
-            , print_mode=False)
+#    producer = KafkaProducer(bootstrap_servers=kafka_brokers)
+#    producer.send(kafka_topic_sumo_run_report, b"test")
+#    sumoBinary = checkBinary('sumo')
+#    main_pedestrian.ipa_gradient_method_pedestrian(
+#            initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5]
+#            , lam=[10, 10, 6, 6]
+#            , demand_scale=1
+#            , step_size=1
+#            , par_update_step_size=30
+#            , run_time=1000
+#            , total_iter_num=10
+#            , iters_per_par=5
+#            , print_mode=False)
     return "Hello World!"
 
 def start():

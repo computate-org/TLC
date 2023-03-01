@@ -8,7 +8,8 @@ EXPOSE 8081/tcp
 ENV FLASK_PORT=8081 \
   KAFKA_BROKERS=smartvillage-kafka-kafka-brokers.smartabyar-smartvillage.svc.cluster.local:9092 \
   KAFKA_GROUP=smartvillage-kafka-group \
-  KAFKA_TOPIC=smartvillage-sumo-run 
+  KAFKA_TOPIC_SUMO_RUN=smartvillage-sumo-run \
+  KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report 
 
 # Set the working directory in the container
 WORKDIR /usr/local/src/TLC

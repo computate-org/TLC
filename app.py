@@ -11,17 +11,18 @@ app = Flask(__name__)
 
 INTERRUPT_EVENT = Event()
 
-#kafka_brokers = os.environ.get('KAFKA_BROKERS') or "smartvillage-kafka-kafka-brokers.smartabyar-smartvillage.svc.cluster.local:9092"
-#kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
-#kafka_topic = os.environ.get('KAFKA_TOPIC') or "smartvillage-sumo-run"
-#bus = FlaskKafka(INTERRUPT_EVENT,
-#         bootstrap_servers=",".join([kafka_brokers]),
-#         group_id=kafka_group
-#         )
-#
-#@bus.handle(kafka_topic)
-#def test_topic_handler(msg):
-#    print("received message from %s topic: %s" % (kafka_topic, msg))
+kafka_brokers = os.environ.get('KAFKA_BROKERS') or "smartvillage-kafka-kafka-brokers.smartabyar-smartvillage.svc.cluster.local:9092"
+kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
+kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
+kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
+bus = FlaskKafka(INTERRUPT_EVENT,
+         bootstrap_servers=",".join([kafka_brokers]),
+         group_id=kafka_group
+         )
+
+@bus.handle(kafka_topic_sumo_run)
+def test_topic_handler(msg):
+    print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)
@@ -88,8 +89,8 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
 
 @app.route('/')
 def hello():
-#    producer = KafkaProducer(bootstrap_servers=kafka_brokers)
-#    producer.send(kafka_topic, b"test")
+    producer = KafkaProducer(bootstrap_servers=kafka_brokers)
+    producer.send(kafka_topic_sumo_run_report, b"test")
     sumoBinary = checkBinary('sumo')
     main_pedestrian.ipa_gradient_method_pedestrian(
             initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5]
@@ -107,8 +108,8 @@ def start():
     flask_port = os.environ.get('FLASK_PORT') or 8080
     flask_port = int(flask_port)
 
-#    bus.run()
-#    listen_kill_server()
+    bus.run()
+    listen_kill_server()
     app.run(port=flask_port, host='0.0.0.0')
 
 if __name__ == "__main__":

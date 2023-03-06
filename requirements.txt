@@ -3,4 +3,3 @@ flask-kafka
 kafka-python
 sumolib
 matplotlib
-

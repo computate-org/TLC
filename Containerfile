@@ -23,6 +23,9 @@ RUN pip install -r requirements.txt
 # Copy the content of the local src directory to the working directory
 COPY . .
 
+# Add write privileges to input and output directory
+RUN chmod -R a+rw /usr/local/src/TLC/input /usr/local/src/TLC/output
+
 # Specify the command to run on container start
 CMD [ "python", "app.py" ]
 

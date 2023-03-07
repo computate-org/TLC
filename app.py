@@ -7,6 +7,7 @@ import json
 import signal
 import os
 import sys
+import traceback
 import main_pedestrian
 
 app = Flask(__name__)

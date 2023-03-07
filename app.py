@@ -6,6 +6,7 @@ from sumolib import checkBinary  # noqa
 import json
 import signal
 import os
+import sys
 import main_pedestrian
 
 app = Flask(__name__)

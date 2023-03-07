@@ -31,7 +31,7 @@ def test_topic_handler(msg):
         body = json.loads(msg.value)
     
         initial_par = body.get('paramInitialPar', [10, 20, 30, 50, 10, 10, 8, 8, 5, 5])
-        inital_par = [int(s) for s in initial_par]
+        initial_par = [int(s) for s in initial_par]
 
         lam = body.get('paramLam', [10, 10, 6, 6])
         lam = [int(s) for s in lam]

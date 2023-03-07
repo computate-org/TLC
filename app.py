@@ -47,8 +47,8 @@ def test_topic_handler(msg):
                 , total_iter_num=total_iter_num
                 , iters_per_par=iters_per_par
                 , print_mode=False)
-    except:
-        print("an error occured processing a message on %s topic: %s" % (kafka_topic_sumo_run, msg))
+    except Exception as e:
+        print("an error occured processing a message on %s topic: %s\n%s" % (kafka_topic_sumo_run, str(e), msg))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)

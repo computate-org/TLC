@@ -23,29 +23,32 @@ bus = FlaskKafka(INTERRUPT_EVENT,
 
 @bus.handle(kafka_topic_sumo_run)
 def test_topic_handler(msg):
-    print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
-    sumoBinary = checkBinary('sumo')
-    body = json.loads(msg.value)
-
-    initial_par = body.get('paramInitialPar', [10, 20, 30, 50, 10, 10, 8, 8, 5, 5])
-    lam = body.get('paramLam', [10, 10, 6, 6])
-    demand_scale = body.get('paramDemandScale', 1)
-    step_size = body.get('paramStepSize', 1)
-    par_update_step_size = body.get('paramUpdateStepSize', 30)
-    run_time = body.get('paramRunTime', 1000)
-    total_iter_num = body.get('paramTotalIterNum', 10)
-    iters_per_par = body.get('paramItersPerPar', 5)
-
-    main_pedestrian.ipa_gradient_method_pedestrian(
-            initial_par=initial_par
-            , lam=lam
-            , demand_scale=demand_scale
-            , step_size=step_size
-            , par_update_step_size=par_update_step_size
-            , run_time=run_time
-            , total_iter_num=total_iter_num
-            , iters_per_par=iters_per_par
-            , print_mode=False)
+    try:
+        print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
+        sumoBinary = checkBinary('sumo')
+        body = json.loads(msg.value)
+    
+        initial_par = body.get('paramInitialPar', [10, 20, 30, 50, 10, 10, 8, 8, 5, 5])
+        lam = body.get('paramLam', [10, 10, 6, 6])
+        demand_scale = int(body.get('paramDemandScale', 1))
+        step_size = int(body.get('paramStepSize', 1))
+        par_update_step_size = int(body.get('paramUpdateStepSize', 30))
+        run_time = int(body.get('paramRunTime', 1000))
+        total_iter_num = int(body.get('paramTotalIterNum', 10))
+        iters_per_par = int(body.get('paramItersPerPar', 5))
+    
+        main_pedestrian.ipa_gradient_method_pedestrian(
+                initial_par=initial_par
+                , lam=lam
+                , demand_scale=demand_scale
+                , step_size=step_size
+                , par_update_step_size=par_update_step_size
+                , run_time=run_time
+                , total_iter_num=total_iter_num
+                , iters_per_par=iters_per_par
+                , print_mode=False)
+    except:
+        print("an error occured processing a message on %s topic: %s" % (kafka_topic_sumo_run, msg))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)

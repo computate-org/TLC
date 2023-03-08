@@ -43,7 +43,7 @@ def test_topic_handler(msg):
         total_iter_num = int(body.get('paramTotalIterNum', 10))
         iters_per_par = int(body.get('paramItersPerPar', 5))
     
-        main_pedestrian.ipa_gradient_method_pedestrian(
+        updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
                 initial_par=initial_par
                 , lam=lam
                 , demand_scale=demand_scale
@@ -53,6 +53,10 @@ def test_topic_handler(msg):
                 , total_iter_num=total_iter_num
                 , iters_per_par=iters_per_par
                 , print_mode=False)
+
+        producer = KafkaProducer(bootstrap_servers=kafka_brokers)
+        result = { "pk": body.get("pk"), "setUpdatedParameters": updated_parameters, "setUpdatedPerformance": updated_performance }
+        producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
@@ -131,8 +135,6 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
 
 @app.route('/')
 def hello():
-    # producer = KafkaProducer(bootstrap_servers=kafka_brokers)
-    # producer.send(kafka_topic_sumo_run, b'{ "paramTotalIterNum": 1, "paramItersPerPar": 1 }')
     return "Hello World!"
 
 def start():

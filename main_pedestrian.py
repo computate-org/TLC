@@ -980,6 +980,7 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
 
         print('****************************************************************************')
+    return par_list_output, performance_list_output
 
 
 def reset_par(theta, det_veh_num, queue_length, depart_veh_num, depart_ped_num):

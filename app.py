@@ -30,14 +30,14 @@ def test_topic_handler(msg):
         sumoBinary = checkBinary('sumo')
         body = json.loads(msg.value)
     
-        initial_par = body.get('paramInitialPar', [10, 20, 30, 50, 10, 10, 8, 8, 5, 5])
-        initial_par = [int(s) for s in initial_par]
+        initial_par = body.get('paramInitialPar', [10., 20., 30., 50., 10., 10., 8., 8., 5., 5.])
+        initial_par = [float(s) for s in initial_par]
 
-        lam = body.get('paramLam', [10, 10, 6, 6])
-        lam = [int(s) for s in lam]
+        lam = body.get('paramLam', [10., 10., 6., 6.])
+        lam = [float(s) for s in lam]
 
-        demand_scale = int(body.get('paramDemandScale', 1))
-        step_size = int(body.get('paramStepSize', 1))
+        demand_scale = float(body.get('paramDemandScale', 1.))
+        step_size = float(body.get('paramStepSize', 1.))
         par_update_step_size = int(body.get('paramUpdateStepSize', 30))
         run_time = int(body.get('paramRunTime', 1000))
         total_iter_num = int(body.get('paramTotalIterNum', 10))
@@ -64,7 +64,7 @@ def test_topic_handler(msg):
         for trace in trace_back:
             stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
     
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, stack_trace))
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)

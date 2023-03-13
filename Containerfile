@@ -14,8 +14,8 @@ ENV FLASK_PORT=8081 \
   KAFKA_PASSWORD='' \
   KAFKA_SECURITY_PROTOCOL=PLAINTEXT \
   KAFKA_SSL_CAFILE=/usr/local/src/TLC/ca.crt \
-  KAFKA_SSL_CERTFILE=/usr/local/src/TLC/tls.crt \
-  KAFKA_SSL_KEYFILE=/usr/local/src/TLC/tls.key
+  KAFKA_SSL_CERTFILE='' \
+  KAFKA_SSL_KEYFILE=''
 
 # Set the working directory in the container
 WORKDIR /usr/local/src/TLC

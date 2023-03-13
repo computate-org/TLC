@@ -24,17 +24,18 @@ kafka_password = os.environ.get('KAFKA_PASSWORD') or ""
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/tls.crt"
+kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or ""
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
-kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/tls.key"
+kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or ""
 if("SSL" == kafka_security_protocol):
     bus = FlaskKafka(INTERRUPT_EVENT
              , bootstrap_servers=",".join([kafka_brokers])
              , group_id=kafka_group
              , security_protocol=kafka_security_protocol
              , ssl_cafile=kafka_ssl_cafile
-             # , ssl_certfile=kafka_ssl_certfile
-             # , ssl_keyfile=kafka_ssl_keyfile
+             , ssl_certfile=kafka_ssl_certfile
+             , ssl_keyfile=kafka_ssl_keyfile
+             , ssl_password=kafka_password
              )
 else:
     bus = FlaskKafka(INTERRUPT_EVENT
@@ -42,6 +43,7 @@ else:
              , group_id=kafka_group
              , security_protocol=kafka_security_protocol
              , sasl_plain_username=kafka_username
+             , sasl_plain_password=kafka_password
              )
 
 @bus.handle(kafka_topic_sumo_run)
@@ -75,13 +77,22 @@ def test_topic_handler(msg):
                 , iters_per_par=iters_per_par
                 , print_mode=False)
 
-        producer = KafkaProducer(
-                bootstrap_servers=kafka_brokers
-                , security_protocol=kafka_security_protocol
-                , ssl_cafile=kafka_ssl_cafile
-                # , ssl_certfile=kafka_ssl_certfile
-                # , ssl_keyfile=kafka_ssl_keyfile
-                )
+        if("SSL" == kafka_security_protocol):
+            producer = KafkaProducer(
+                    bootstrap_servers=kafka_brokers
+                    , security_protocol=kafka_security_protocol
+                    , ssl_cafile=kafka_ssl_cafile
+                    , ssl_certfile=kafka_ssl_certfile
+                    , ssl_keyfile=kafka_ssl_keyfile
+                    , ssl_password=kafka_password
+                    )
+        else:
+            producer = KafkaProducer(
+                    bootstrap_servers=kafka_brokers
+                    , security_protocol=kafka_security_protocol
+                    , sasl_plain_username=kafka_username
+                    , sasl_plain_password=kafka_password
+                    )
         result = { "pk": body.get("pk"), "setUpdatedParameters": updated_parameters, "setUpdatedPerformance": updated_performance }
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     except Exception as e:

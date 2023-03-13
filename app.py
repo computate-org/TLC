@@ -14,19 +14,19 @@ app = Flask(__name__)
 
 INTERRUPT_EVENT = Event()
 
-kafka_brokers = os.environ.get('KAFKA_BROKERS') or "skafka0.apps-crc.testing:32000"
+kafka_brokers = os.environ.get('KAFKA_BROKERS') or "kafka0.apps-crc.testing:32000"
 kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
 kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
-kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "PLAINTEXT"
-kafka_username = os.environ.get('KAFKA_USERNAME') or ""
-kafka_password = os.environ.get('KAFKA_PASSWORD') or ""
+kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
+kafka_username = os.environ.get('KAFKA_USERNAME') or "smartvillage"
+kafka_password = os.environ.get('KAFKA_PASSWORD') or "FgfzO6pdpvMY"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or ""
+kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/user.crt"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
-kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or ""
+kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
 if("SSL" == kafka_security_protocol):
     bus = FlaskKafka(INTERRUPT_EVENT
              , bootstrap_servers=",".join([kafka_brokers])
@@ -42,6 +42,7 @@ else:
              , bootstrap_servers=",".join([kafka_brokers])
              , group_id=kafka_group
              , security_protocol=kafka_security_protocol
+             , sasl_mechanism="PLAIN"
              , sasl_plain_username=kafka_username
              , sasl_plain_password=kafka_password
              )
@@ -90,6 +91,7 @@ def test_topic_handler(msg):
             producer = KafkaProducer(
                     bootstrap_servers=kafka_brokers
                     , security_protocol=kafka_security_protocol
+                    , sasl_mechanism="PLAIN"
                     , sasl_plain_username=kafka_username
                     , sasl_plain_password=kafka_password
                     )

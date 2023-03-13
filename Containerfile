@@ -6,10 +6,14 @@ MAINTAINER Christopher Tate <computate@computate.org>
 EXPOSE 8081/tcp
 
 ENV FLASK_PORT=8081 \
-  KAFKA_BROKERS=smartvillage-kafka-kafka-brokers.smartabyar-smartvillage.svc.cluster.local:9092 \
+  KAFKA_BROKERS=smartvillage-kafka-kafka-brokers.smartabyar-smartvillage.svc.cluster.local:9093 \
   KAFKA_GROUP=smartvillage-kafka-group \
   KAFKA_TOPIC_SUMO_RUN=smartvillage-sumo-run \
-  KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report 
+  KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report \
+  KAFKA_SECURITY_PROTOCOL=SSL \
+  KAFKA_SSL_CAFILE=/usr/local/src/TLC/ca.crt \
+  KAFKA_SSL_CERTFILE=/usr/local/src/TLC/tls.crt \
+  KAFKA_SSL_KEYFILE=/usr/local/src/TLC/tls.key
 
 # Set the working directory in the container
 WORKDIR /usr/local/src/TLC

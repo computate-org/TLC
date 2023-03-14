@@ -35,7 +35,6 @@ if("SSL" == kafka_security_protocol):
              , ssl_cafile=kafka_ssl_cafile
              , ssl_certfile=kafka_ssl_certfile
              , ssl_keyfile=kafka_ssl_keyfile
-             , ssl_password=kafka_password
              )
 else:
     bus = FlaskKafka(INTERRUPT_EVENT
@@ -85,7 +84,6 @@ def test_topic_handler(msg):
                     , ssl_cafile=kafka_ssl_cafile
                     , ssl_certfile=kafka_ssl_certfile
                     , ssl_keyfile=kafka_ssl_keyfile
-                    , ssl_password=kafka_password
                     )
         else:
             producer = KafkaProducer(

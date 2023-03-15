@@ -972,9 +972,11 @@ def ipa_gradient_method_pedestrian(simulation_report, initial_par, lam, demand_s
             performance_list_output = []
             for j in range(5):
                 performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
+                result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output }
+                producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
             print(performance_list_output)
     
-            generate_plots(par_list_output, performance_list_output)
+            #generate_plots(par_list_output, performance_list_output)
     
             # print("------")
             # for i in range(len(d_L)):

@@ -94,8 +94,6 @@ def test_topic_handler(msg):
                     , sasl_plain_username=kafka_username
                     , sasl_plain_password=kafka_password
                     )
-        result = { "pk": body.get("pk"), "setUpdatedParameters": updated_parameters, "setUpdatedPerformance": updated_performance }
-        producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples

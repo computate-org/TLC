@@ -67,7 +67,8 @@ def test_topic_handler(msg):
         iters_per_par = int(body.get('paramItersPerPar', 5))
     
         updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
-                initial_par=initial_par
+                body
+                , initial_par=initial_par
                 , lam=lam
                 , demand_scale=demand_scale
                 , step_size=step_size

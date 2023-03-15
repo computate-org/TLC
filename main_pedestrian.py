@@ -1,5 +1,7 @@
 import os
 import sys
+import traceback
+import json
 import optparse
 import random
 from pprint import pprint
@@ -7,6 +9,7 @@ from config import *
 from route_file_generation import generate_routefile, generate_routefile_Veberod, generate_routefile_pedestrian, \
     generate_routefile_Veberod_uni, generate_routefile_pedestrian_uni
 import matplotlib.pyplot as plt
+from kafka import  KafkaProducer
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -912,74 +915,111 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
 
 
 # time driven main function: time driven parameter updating with parallel running
-def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
+def ipa_gradient_method_pedestrian(simulation_report, initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
                                    total_iter_num, iters_per_par, print_mode):
-    """ run ipa method to update par"""
-    lam = np.array(lam)/60.
-    par_list = [[i] for i in initial_par]
 
-    d_L_list = []
-    performance_list = []
-
-    iter_num = 0
-
-    while iter_num < total_iter_num:
-        iter_num += 1
-
-        d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                        iters_per_par, print_mode)
-
-        # update performance
-        performance_list.append(performance)
-        d_L_list.append(d_L)
-        print('****************************************************************************')
-        # print("dL: " + str(d_L))
-        print("parameters:")
-        par_list_output = []
-        for par in par_list:
-            par_list_output.append([round(i, 3) for i in par])
-            # print(str([round(i, 3) for i in par]) + ",")
-        print(par_list_output)
-
-        print("performance:")
-        # print([round(i, 3) for i in [i[-1] for i in performance_list]])
-        performance_list_output = []
-        for j in range(5):
-            performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
-        print(performance_list_output)
-
-        generate_plots(par_list_output, performance_list_output)
-
-        # print("------")
-        # for i in range(len(d_L)):
-        #     print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
-
-        # update parameters
-        par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 1., 4., 0.5, 1.5)
-        # print("par_update_step_size: " + str(par_update_step_size))
-
-        # theta_1_min
-        par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
-        # theta_1_max
-        par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
-        # theta_2_min
-        par_list[2].append(max(0.1, par_list[2][-1] - par_update_step_size * d_L[2]))
-        # theta_2_max
-        par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
-        # theta_3
-        par_list[4].append(max(0.1, par_list[4][-1] - par_update_step_size * d_L[4]))
-        # theta_4
-        par_list[5].append(max(0.1, par_list[5][-1] - par_update_step_size * d_L[5]))
-        # s_1
-        par_list[6].append(max(0.1, par_list[6][-1] - par_update_step_size * d_L[6]))
-        # s_2
-        par_list[7].append(max(0.1, par_list[7][-1] - par_update_step_size * d_L[7]))
-        # s_3
-        par_list[8].append(max(0.1, par_list[8][-1] - par_update_step_size * d_L[8]))
-        # s_4
-        par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
-
-        print('****************************************************************************')
+    try:
+        kafka_brokers = os.environ.get('KAFKA_BROKERS') or "kafka0.apps-crc.testing:32000"
+        kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
+        kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
+        kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
+        kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
+        kafka_username = os.environ.get('KAFKA_USERNAME') or "smartvillage"
+        kafka_password = os.environ.get('KAFKA_PASSWORD') or ""
+        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
+        kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
+        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
+        kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/user.crt"
+        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
+        kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
+        producer = KafkaProducer(
+                bootstrap_servers=kafka_brokers
+                , security_protocol=kafka_security_protocol
+                , ssl_cafile=kafka_ssl_cafile
+                , ssl_certfile=kafka_ssl_certfile
+                , ssl_keyfile=kafka_ssl_keyfile
+                )
+    
+        """ run ipa method to update par"""
+        lam = np.array(lam)/60.
+        par_list = [[i] for i in initial_par]
+    
+        d_L_list = []
+        performance_list = []
+    
+        iter_num = 0
+    
+        while iter_num < total_iter_num:
+            iter_num += 1
+    
+            d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
+                                            iters_per_par, print_mode)
+    
+            # update performance
+            performance_list.append(performance)
+            d_L_list.append(d_L)
+            print('****************************************************************************')
+            # print("dL: " + str(d_L))
+            print("parameters:")
+            par_list_output = []
+            for par in par_list:
+                par_list_output.append([round(i, 3) for i in par])
+                # print(str([round(i, 3) for i in par]) + ",")
+            print(par_list_output)
+    
+            print("performance:")
+            # print([round(i, 3) for i in [i[-1] for i in performance_list]])
+            performance_list_output = []
+            for j in range(5):
+                performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
+            print(performance_list_output)
+    
+            generate_plots(par_list_output, performance_list_output)
+    
+            # print("------")
+            # for i in range(len(d_L)):
+            #     print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
+    
+            # update parameters
+            par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 1., 4., 0.5, 1.5)
+            # print("par_update_step_size: " + str(par_update_step_size))
+    
+            # theta_1_min
+            par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
+            # theta_1_max
+            par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
+            # theta_2_min
+            par_list[2].append(max(0.1, par_list[2][-1] - par_update_step_size * d_L[2]))
+            # theta_2_max
+            par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
+            # theta_3
+            par_list[4].append(max(0.1, par_list[4][-1] - par_update_step_size * d_L[4]))
+            # theta_4
+            par_list[5].append(max(0.1, par_list[5][-1] - par_update_step_size * d_L[5]))
+            # s_1
+            par_list[6].append(max(0.1, par_list[6][-1] - par_update_step_size * d_L[6]))
+            # s_2
+            par_list[7].append(max(0.1, par_list[7][-1] - par_update_step_size * d_L[7]))
+            # s_3
+            par_list[8].append(max(0.1, par_list[8][-1] - par_update_step_size * d_L[8]))
+            # s_4
+            par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
+    
+            print('****************************************************************************')
+            result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output }
+            producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
+    except Exception as e:
+        ex_type, ex_value, ex_traceback = sys.exc_info()
+        # Extract unformatter stack traces as tuples
+        trace_back = traceback.extract_tb(ex_traceback)
+    
+        # Format stacktrace
+        stack_trace = list()
+    
+        for trace in trace_back:
+            stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
+    
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
     return par_list_output, performance_list_output
 
 

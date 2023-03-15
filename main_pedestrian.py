@@ -872,15 +872,15 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
 
 # time driven
-def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, print_mode=False):
+def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix_seed=False, print_mode=False):
     """repeat the test with same parameter, but different random seed"""
 
     d_L_list = []
     performance_list = []
 
-    fix_seed = False
-    if iters_per_par == 1:
-        fix_seed = True
+    # fix_seed = False
+    # if iters_per_par == 1:
+    #     fix_seed = True
 
     iters = 0
     while iters < iters_per_par:
@@ -912,8 +912,9 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
 
 
 # time driven main function: time driven parameter updating with parallel running
-def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
+def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, run_time,
                                    total_iter_num, iters_per_par, print_mode):
+    par_update_step_size = 30
     """ run ipa method to update par"""
     lam = np.array(lam)/60.
     par_list = [[i] for i in initial_par]
@@ -927,7 +928,7 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, pa
         iter_num += 1
 
         d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                        iters_per_par, print_mode)
+                                        iters_per_par)
 
         # update performance
         performance_list.append(performance)
@@ -1205,10 +1206,10 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
             # d_L = sum(d_x_total[-(4*update_interval):])/(4*update_interval)
 
             # 5. use last several interval of data, but give more weight to recent one
-            # d_L = 0.8 * sum(d_x_total[-update_interval:])/update_interval + \
-            #       0.1 * sum(d_x_total[-(2 * update_interval):-update_interval])/update_interval + \
-            #       0.05 * sum(d_x_total[-(3 * update_interval):-(2 * update_interval)]) / update_interval + \
-            #       0.05 * sum(d_x_total[-(4 * update_interval):-(3 * update_interval)]) / update_interval
+            # d_L = 0.6 * sum(d_x_total[-update_interval:])/update_interval + \
+            #       0.4 * sum(d_x_total[-(2 * update_interval):-update_interval])/update_interval
+                  # 0.05 * sum(d_x_total[-(3 * update_interval):-(2 * update_interval)]) / update_interval + \
+                  # 0.05 * sum(d_x_total[-(4 * update_interval):-(3 * update_interval)]) / update_interval
 
 
 
@@ -1216,12 +1217,12 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
             # d_L = np.array(d_L) * 1.0 / step_per_iter
             # iter_num = round(step/update_interval)
             iter_num += 1
-            if step == 21600:
-                iter_num = 1
-                max_delta_theta = 2
-                max_delta_s = 1
-            if step == 36000:
-                iter_num = 1
+            # if step == 21600:
+            #     iter_num = 1
+            #     max_delta_theta = 2
+            #     max_delta_s = 1
+            # if step == 36000:
+            #     iter_num = 1
             theta, d_L_list, performance_list, par_list, par_update_step_size = \
                 update_result(d_L_list, performance_list, d_L, queue_length, depart_veh_num, depart_ped_num, par_list, \
                               step_per_iter, par_update_step_size, iter_num, max_delta_theta, max_delta_s, print_mode)
@@ -1250,7 +1251,7 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
 
 # main function: event driven parameter updating, with sequential running
 def ipa_gradient_method_pedestrian_sequential(initial_par, lam, demand_scale, step_size, run_time, iter_num,
-                                              print_mode):
+                                             print_mode=False):
 
     var_list = []
     avg_list = []
@@ -1682,7 +1683,6 @@ def generate_plots(par, performance):
     # plt.show()
 
 
-
 if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
@@ -1690,7 +1690,7 @@ if __name__ == "__main__":
     # pedestrian_baseline_test()
 
     ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[10, 10, 6, 6],
-                                   demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
+                                   demand_scale=1, step_size=1, run_time=1000,
                                    total_iter_num=10, iters_per_par=5, print_mode=False)
 
     # for lam3 in [1/10., 1/15, 1/20, 1/25]:
@@ -1702,12 +1702,13 @@ if __name__ == "__main__":
     #     print("lam3: " + str(lam3))
     #     print('================================================================')
 
-    # event driven + sequential one time
+    # sequential one time
     # ipa_gradient_method_pedestrian_sequential(
     #     initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
     #     lam=[0.11, 0.125, 0.01, 0.01],
-    #     # lam=[0.11, 0.125, 0.1, 0.1],
-    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=20, print_mode=False)
+    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=1,  print_mode=False)
+
+
 
     # event driven + parallel repeat
     # ipa_gradient_method_pedestrian_event_driven(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],

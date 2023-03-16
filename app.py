@@ -1,6 +1,6 @@
 from flask import Flask
 from threading import Event
-from flask_kafka import FlaskKafka
+from consumer import FlaskKafka
 from kafka import  KafkaProducer
 from sumolib import checkBinary  # noqa
 import json
@@ -35,7 +35,7 @@ if("SSL" == kafka_security_protocol):
              , ssl_cafile=kafka_ssl_cafile
              , ssl_certfile=kafka_ssl_certfile
              , ssl_keyfile=kafka_ssl_keyfile
-             , max_poll_interval_ms=3000000
+             , max_poll_interval_ms=3000
              )
 else:
     bus = FlaskKafka(INTERRUPT_EVENT

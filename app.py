@@ -35,6 +35,7 @@ if("SSL" == kafka_security_protocol):
              , ssl_cafile=kafka_ssl_cafile
              , ssl_certfile=kafka_ssl_certfile
              , ssl_keyfile=kafka_ssl_keyfile
+             , max_poll_interval_ms=3000000
              )
 else:
     bus = FlaskKafka(INTERRUPT_EVENT

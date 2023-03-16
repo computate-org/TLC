@@ -915,30 +915,11 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
 
 
 # time driven main function: time driven parameter updating with parallel running
-def ipa_gradient_method_pedestrian(simulation_report, initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
+def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
                                    total_iter_num, iters_per_par, print_mode):
 
     try:
-        kafka_brokers = os.environ.get('KAFKA_BROKERS') or "kafka0.apps-crc.testing:32000"
-        kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
-        kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
         kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
-        kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
-        kafka_username = os.environ.get('KAFKA_USERNAME') or "smartvillage"
-        kafka_password = os.environ.get('KAFKA_PASSWORD') or ""
-        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-        kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
-        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-        kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/user.crt"
-        # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
-        kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
-        producer = KafkaProducer(
-                bootstrap_servers=kafka_brokers
-                , security_protocol=kafka_security_protocol
-                , ssl_cafile=kafka_ssl_cafile
-                , ssl_certfile=kafka_ssl_certfile
-                , ssl_keyfile=kafka_ssl_keyfile
-                )
     
         """ run ipa method to update par"""
         lam = np.array(lam)/60.

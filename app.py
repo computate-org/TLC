@@ -27,6 +27,8 @@ kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.
 kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/user.crt"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
 kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
+kafka_max_poll_records = int(os.environ.get('KAFKA_MAX_POLL_RECORDS') or "1")
+kafka_max_poll_interval_ms = int(os.environ.get('KAFKA_MAX_POLL_INTERVAL_MS') or "3000000")
 if("SSL" == kafka_security_protocol):
     bus = FlaskKafka(INTERRUPT_EVENT
              , bootstrap_servers=",".join([kafka_brokers])
@@ -35,16 +37,16 @@ if("SSL" == kafka_security_protocol):
              , ssl_cafile=kafka_ssl_cafile
              , ssl_certfile=kafka_ssl_certfile
              , ssl_keyfile=kafka_ssl_keyfile
-             , max_poll_interval_ms=3000
+             , max_poll_interval_ms=kafka_max_poll_interval_ms
+             , max_poll_records=kafka_max_poll_records
              )
 else:
     bus = FlaskKafka(INTERRUPT_EVENT
              , bootstrap_servers=",".join([kafka_brokers])
              , group_id=kafka_group
              , security_protocol=kafka_security_protocol
-             , sasl_mechanism="PLAIN"
-             , sasl_plain_username=kafka_username
-             , sasl_plain_password=kafka_password
+             , max_poll_interval_ms=kafka_max_poll_interval_ms
+             , max_poll_records=kafka_max_poll_records
              )
 
 @bus.handle(kafka_topic_sumo_run)
@@ -52,32 +54,20 @@ def test_topic_handler(msg):
     try:
         print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
         sumoBinary = checkBinary('sumo')
-        body = json.loads(msg.value)
+        simulation_report = json.loads(msg.value)
     
-        initial_par = body.get('paramInitialPar', [10., 20., 30., 50., 10., 10., 8., 8., 5., 5.])
+        initial_par = simulation_report.get('paramInitialPar', [10., 20., 30., 50., 10., 10., 8., 8., 5., 5.])
         initial_par = [float(s) for s in initial_par]
 
-        lam = body.get('paramLam', [10., 10., 6., 6.])
+        lam = simulation_report.get('paramLam', [10., 10., 6., 6.])
         lam = [float(s) for s in lam]
 
-        demand_scale = float(body.get('paramDemandScale', 1.))
-        step_size = float(body.get('paramStepSize', 1.))
-        par_update_step_size = int(body.get('paramUpdateStepSize', 30))
-        run_time = int(body.get('paramRunTime', 1000))
-        total_iter_num = int(body.get('paramTotalIterNum', 10))
-        iters_per_par = int(body.get('paramItersPerPar', 5))
-    
-        updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
-                body
-                , initial_par=initial_par
-                , lam=lam
-                , demand_scale=demand_scale
-                , step_size=step_size
-                , par_update_step_size=par_update_step_size
-                , run_time=run_time
-                , total_iter_num=total_iter_num
-                , iters_per_par=iters_per_par
-                , print_mode=False)
+        demand_scale = float(simulation_report.get('paramDemandScale', 1.))
+        step_size = float(simulation_report.get('paramStepSize', 1.))
+        par_update_step_size = int(simulation_report.get('paramUpdateStepSize', 30))
+        run_time = int(simulation_report.get('paramRunTime', 1000))
+        total_iter_num = int(simulation_report.get('paramTotalIterNum', 10))
+        iters_per_par = int(simulation_report.get('paramItersPerPar', 5))
 
         if("SSL" == kafka_security_protocol):
             producer = KafkaProducer(
@@ -95,6 +85,22 @@ def test_topic_handler(msg):
                     , sasl_plain_username=kafka_username
                     , sasl_plain_password=kafka_password
                     )
+
+        result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": [], "setUpdatedPerformance": [] }
+        producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
+    
+        updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
+                producer
+                , simulation_report
+                , initial_par=initial_par
+                , lam=lam
+                , demand_scale=demand_scale
+                , step_size=step_size
+                , par_update_step_size=par_update_step_size
+                , run_time=run_time
+                , total_iter_num=total_iter_num
+                , iters_per_par=iters_per_par
+                , print_mode=False)
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples

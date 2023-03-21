@@ -655,9 +655,9 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
          """
 
     generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
-                               demand_scale * lam[1], fix_seed)
+                               demand_scale[0] * lam[1], fix_seed)
     generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", run_time, demand_scale * lam[2],
-                                  demand_scale * lam[3], fix_seed)
+                                  demand_scale[1] * lam[3], fix_seed)
 
     # one run renewal
     last_switch_dtau = [0] * len(theta)
@@ -1681,6 +1681,7 @@ def generate_plots(par, performance):
     plt.legend()
     plt.savefig("./output/queue_length_threshold.png")
     # plt.show()
+    plt.close('all')
 
 
 if __name__ == "__main__":
@@ -1689,9 +1690,9 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
 
-    ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[10, 10, 6, 6],
-                                   demand_scale=1, step_size=1, run_time=1000,
-                                   total_iter_num=10, iters_per_par=5, print_mode=False)
+    ipa_gradient_method_pedestrian(initial_par=[20, 40, 10, 20, 10, 10, 8, 8, 5, 5], lam=[40, 40, 6, 6],
+                                   demand_scale=[1, 1], step_size=1, run_time=1000,
+                                   total_iter_num=10, iters_per_par=10, print_mode=False)
 
     # for lam3 in [1/10., 1/15, 1/20, 1/25]:
     #

@@ -6,8 +6,8 @@ import numpy as np
 
 
 def expo_gen(lam):
-    # return -1 / lam * math.log(1 - random.random())
-    return np.random.exponential(1/lam)
+    return -1 / lam * math.log(1 - random.random())
+    # return np.random.exponential(1/lam)
 
 def uniform_gen(lam, range_rate):
     t = 1/lam
@@ -57,7 +57,7 @@ guiShape="passenger"/>
 
 
 def generate_routefile_Veberod(file_name, run_time, lam1, lam2, fix_seed):
-    seed = 3570926575676058649
+    seed = 666
     if not fix_seed:
         seed = random.randrange(sys.maxsize)
     random.seed(seed)
@@ -81,10 +81,10 @@ guiShape="passenger"/>
         <route id="r42" edges="-355113043#1 -24626686#2 -24626686#1 -34992983#3 -34992983#1" />""", file=routes)
         vehNr = 0
         for i in range(N):
-            if i == 21600:
-                lam13 = lam13 * 1.2
-            if i == 36000:
-                lam13 = lam13 / 1.2
+            # if i == 21600:
+            #     lam13 = lam13 * 1.2
+            # if i == 36000:
+            #     lam13 = lam13 / 1.2
             if i > next_13:
                 print('    <vehicle id="right_%i" type="v1" route="r13" depart="%i" />' % (
                     vehNr, i), file=routes)

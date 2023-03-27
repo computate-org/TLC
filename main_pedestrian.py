@@ -343,19 +343,22 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
             print("alpha{}=0".format(idx))
 
     # z1=theta_1_max
-    elif last_switch >= theta[idx * 2 + 1] and queue_length[idx_][-1] > 0:
+    elif last_switch >= theta[idx * 2 + 1] and \
+            queue_length[idx_][-1] > 0:
         light_switch = True
         d_tau[idx * 2 + 1] = d_tau[idx * 2 + 1] + 1
+        events_count_list[idx * 2 + 1] += 1
         if print_mode:
             print("z{0}=theta_{0}_max".format(idx + 1))
 
     # z1=theta_1_min
-    elif last_switch >= theta[idx] > (last_switch - 1) and \
+    elif last_switch >= theta[idx * 2] > (last_switch - 1) and \
             ((f[idx] and not f[idx_]) or (
                     queue_length[idx][-1] < theta[6 + idx] and queue_length[idx_][-1] >= theta[6 + idx_])):
         light_switch = True
 
         d_tau[idx * 2] = d_tau[idx * 2] + 1
+        events_count_list[idx * 2] += 1
         if print_mode:
             print("z{0}=theta_{0}_min".format(idx + 1))
 
@@ -370,6 +373,8 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
             tmp = -np.array(d_x[idx])
             tmp[6 + idx] += 1
             d_tau = tmp / (alpha_rate[idx] - h[idx])
+
+        events_count_list[idx + 6] += 1
         if print_mode:
             print("x{0} = s{0}(a) G2R{0}".format(idx + 1))
 
@@ -385,6 +390,7 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
         tmp = - np.array(d_x[idx_])
         tmp[6 + idx_] += 1
         d_tau = tmp / alpha_rate[idx_]
+        events_count_list[6 + idx_] += 1
         if print_mode:
             print("x{0} = s{0}(b) G2R{0}".format(idx_ + 1))
 
@@ -401,6 +407,8 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
             tmp = - np.array(d_x[idx_ + 2])
             tmp[idx_ + 8] += 1
             d_tau = tmp / (alpha_rate[idx_ + 2] - h[idx_ + 2])
+
+        events_count_list[idx_ + 8] += 1
         if print_mode:
             print("x{0} = s{0}(a) G2R{1}".format(idx_ + 3, idx + 1))
 
@@ -418,6 +426,7 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
         tmp = - np.array(d_x[idx + 2])
         tmp[idx + 8] += 1
         d_tau = tmp / alpha_rate[idx + 2]
+        events_count_list[idx + 8] += 1
         if print_mode:
             print("x{0} = s{0}(b) G2R{1}".format(idx + 3, idx + 1))
 
@@ -429,6 +438,7 @@ def update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, a
         light_switch = True
         d_tau = np.zeros(len(theta))
         d_tau[idx + 4] = 1
+        events_count_list[idx + 4] += 1
         if print_mode:
             print("y{0} = theta{1}  G2R{0}".format(idx + 1, idx + 3))
 
@@ -657,10 +667,10 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
          step_size: time passed for each simulation step
          """
 
-    generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
-                               demand_scale * lam[1], fix_seed)
-    generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", run_time, demand_scale * lam[2],
-                                  demand_scale * lam[3], fix_seed)
+    generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale[0] * lam[0],
+                               demand_scale[0] * lam[1], fix_seed)
+    generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", run_time, demand_scale[1] * lam[2],
+                                  demand_scale[1] * lam[3], fix_seed)
 
     # one run renewal
     last_switch_dtau = [0] * len(theta)
@@ -725,14 +735,14 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
         # update pedestrian state
         f = [False, False]
-        if green_1 and (queue_length[2][-1] >= theta[8] or last_push_button >= theta[4]):
+        if queue_length[2][-1] >= theta[8]:
             f[0] = True
-        if (not green_1) and (queue_length[3][-1] >= theta[9] or last_push_button >= theta[5]):
+        if queue_length[3][-1] >= theta[9]:
             f[1] = True
-
-        if print_mode:
-            print("current detected vehicle number: " + str(det_veh_num[0][-1]) + "  " + str(det_veh_num[1][-1]))
-            print("jam length: " + str(queue_length[0][-1]) + "  " + str(queue_length[1][-1]))
+        if green_1 and last_push_button >= theta[4]:
+            f[0] = True
+        if (not green_1) and last_push_button >= theta[5]:
+            f[1] = True
 
         # update departure rate
         tmp = [len(set(sum(i, []))) for i in beta]
@@ -806,18 +816,6 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
             jam[3] = []
             alpha_rate[3] = beta_rate[3]
 
-        if print_mode:
-            print('------------------------------------')
-            # print("alpha:" + str(alpha_1) + ">>>>" + str(alpha_2))
-            # print("veh_ids: " + str(traci.lanearea.getLastStepVehicleIDs("det_13")) + ">>>>" + str(traci.lanearea.getLastStepVehicleIDs("det_42")))
-            print("jam:" + str(jam))
-            print("arrival rate: " + str(alpha_rate))
-            print("beta:" + str(beta))
-            print("departure rate: " + str(beta_rate))
-            print("depart_veh_num: " + str(depart_veh_num[0][-1]) + ">>>>" + str(depart_veh_num[1][-1]))
-            print("depart_ped_num: " + str(depart_ped_num[0][-1]) + ">>>>" + str(depart_ped_num[1][-1]))
-            # print('tmp: ' + str(tmp1)+ ">>>>" + str(tmp2))
-            print('-------------------------------------')
 
         # update event time derivative
         idx = int(not green_1)
@@ -875,15 +873,15 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
 
 # time driven
-def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, print_mode=False):
+def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix_seed=False, print_mode=False):
     """repeat the test with same parameter, but different random seed"""
 
     d_L_list = []
     performance_list = []
 
-    fix_seed = False
-    if iters_per_par == 1:
-        fix_seed = True
+    # fix_seed = False
+    # if iters_per_par == 1:
+    #     fix_seed = True
 
     iters = 0
     while iters < iters_per_par:
@@ -915,12 +913,15 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, pri
 
 
 # time driven main function: time driven parameter updating with parallel running
-def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam, demand_scale, step_size, par_update_step_size, run_time,
+def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam, demand_scale, step_size, run_time,
                                    total_iter_num, iters_per_par, print_mode):
 
     try:
         kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
     
+        global events_count_list
+        avg_events_count_list = []
+        par_update_step_size = 30
         """ run ipa method to update par"""
         lam = np.array(lam)/60.
         par_list = [[i] for i in initial_par]
@@ -934,7 +935,7 @@ def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam
             iter_num += 1
     
             d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                            iters_per_par, print_mode)
+                                            iters_per_par)
     
             # update performance
             performance_list.append(performance)
@@ -955,11 +956,13 @@ def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam
                 performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
             print(performance_list_output)
     
-            #generate_plots(par_list_output, performance_list_output)
     
-            # print("------")
-            # for i in range(len(d_L)):
-            #     print(str([round(dl[i], 3) for dl in d_L_list]) + ",")
+            print("events count:")
+            print(events_count_list)
+            avg_events_count_list.append(events_count_list)
+            events_count_list = [0]*10
+    
+            generate_plots(par_list_output, performance_list_output)
     
             # update parameters
             par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 1., 4., 0.5, 1.5)
@@ -989,6 +992,8 @@ def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam
             print('****************************************************************************')
             result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output }
             producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
+        print('avg event counts:')
+        print(np.mean(avg_events_count_list,0))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
@@ -1227,10 +1232,10 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
             # d_L = sum(d_x_total[-(4*update_interval):])/(4*update_interval)
 
             # 5. use last several interval of data, but give more weight to recent one
-            # d_L = 0.8 * sum(d_x_total[-update_interval:])/update_interval + \
-            #       0.1 * sum(d_x_total[-(2 * update_interval):-update_interval])/update_interval + \
-            #       0.05 * sum(d_x_total[-(3 * update_interval):-(2 * update_interval)]) / update_interval + \
-            #       0.05 * sum(d_x_total[-(4 * update_interval):-(3 * update_interval)]) / update_interval
+            # d_L = 0.6 * sum(d_x_total[-update_interval:])/update_interval + \
+            #       0.4 * sum(d_x_total[-(2 * update_interval):-update_interval])/update_interval
+                  # 0.05 * sum(d_x_total[-(3 * update_interval):-(2 * update_interval)]) / update_interval + \
+                  # 0.05 * sum(d_x_total[-(4 * update_interval):-(3 * update_interval)]) / update_interval
 
 
 
@@ -1238,12 +1243,12 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
             # d_L = np.array(d_L) * 1.0 / step_per_iter
             # iter_num = round(step/update_interval)
             iter_num += 1
-            if step == 21600:
-                iter_num = 1
-                max_delta_theta = 2
-                max_delta_s = 1
-            if step == 36000:
-                iter_num = 1
+            # if step == 21600:
+            #     iter_num = 1
+            #     max_delta_theta = 2
+            #     max_delta_s = 1
+            # if step == 36000:
+            #     iter_num = 1
             theta, d_L_list, performance_list, par_list, par_update_step_size = \
                 update_result(d_L_list, performance_list, d_L, queue_length, depart_veh_num, depart_ped_num, par_list, \
                               step_per_iter, par_update_step_size, iter_num, max_delta_theta, max_delta_s, print_mode)
@@ -1272,24 +1277,24 @@ def ped_adaptive_sequential(initial_par, step_size, run_time, print_mode):
 
 # main function: event driven parameter updating, with sequential running
 def ipa_gradient_method_pedestrian_sequential(initial_par, lam, demand_scale, step_size, run_time, iter_num,
-                                              print_mode):
+                                             print_mode=False):
 
     var_list = []
     avg_list = []
     for iter in range(iter_num):
-        generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale * lam[0],
-                                   demand_scale * lam[1], False)
+        generate_routefile_Veberod("./input/Veberod_intersection_pedestrian.rou.xml", run_time, demand_scale[0] * lam[0],
+                                   demand_scale[0] * lam[1], False)
         generate_routefile_pedestrian("./input/Veberod_intersection_pedestrian.trip.xml", run_time,
-                                      demand_scale * lam[2],
-                                      demand_scale * lam[3], False)
+                                      demand_scale[1] * lam[2],
+                                      demand_scale[1] * lam[3], False)
 
 
         # generate_routefile_Veberod_uni("./input/Veberod_intersection_pedestrian.rou.xml", run_time,
-        #                                [demand_scale * lam[0], 0.62],
-        #                                [demand_scale * lam[1], 0.67], False)
+        #                                [demand_scale[0] * lam[0], 0.62],
+        #                                [demand_scale[0] * lam[1], 0.67], False)
         # generate_routefile_pedestrian_uni("./input/Veberod_intersection_pedestrian.trip.xml", run_time,
-        #                               [demand_scale * lam[2], 0.19],
-        #                               [demand_scale * lam[3], 0.19], False)
+        #                               [demand_scale[1] * lam[2], 0.19],
+        #                               [demand_scale[1] * lam[3], 0.19], False)
 
         d_L_list, performance_list, par_list, update_time = ped_adaptive_sequential(initial_par, step_size, run_time, print_mode)
         waiting_time_list = np.transpose(performance_list)[-1][15:]
@@ -1702,34 +1707,28 @@ def generate_plots(par, performance):
     plt.legend()
     plt.savefig("./output/queue_length_threshold.png")
     # plt.show()
-
+    plt.close('all')
 
 
 sumoBinary = checkBinary('sumo')
 if __name__ == "__main__":
+    sumoBinary = checkBinary('sumo')
     # sumoBinary = checkBinary('sumo-gui')
 
     # pedestrian_baseline_test()
 
-    ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[10, 10, 6, 6],
-                                   demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
-                                   total_iter_num=10, iters_per_par=5, print_mode=False)
+    ipa_gradient_method_pedestrian(initial_par=[30, 35, 15, 20, 10, 100, 5, 8, 3, 3], lam=[10, 10, 5, 5],
+                                   demand_scale=[1, 1], step_size=1, run_time=1000,
+                                   total_iter_num=10, iters_per_par=10, print_mode=False)
 
-    # for lam3 in [1/10., 1/15, 1/20, 1/25]:
-    #
-    # ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
-    #                                lam=[1/6., 1/6., lam3, 1 / 20.],
-    #                                demand_scale=1, step_size=1, par_update_step_size=30, run_time=1000,
-    #                                total_iter_num=20, iters_per_par=30, print_mode=False)
-    #     print("lam3: " + str(lam3))
-    #     print('================================================================')
 
-    # event driven + sequential one time
+    # sequential one time
     # ipa_gradient_method_pedestrian_sequential(
     #     initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
     #     lam=[0.11, 0.125, 0.01, 0.01],
-    #     # lam=[0.11, 0.125, 0.1, 0.1],
-    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=20, print_mode=False)
+    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=1,  print_mode=False)
+
+
 
     # event driven + parallel repeat
     # ipa_gradient_method_pedestrian_event_driven(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 8, 8],

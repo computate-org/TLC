@@ -916,8 +916,8 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
 def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam, demand_scale, step_size, run_time,
                                    total_iter_num, iters_per_par, print_mode):
 
+    kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
     try:
-        kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
     
         global events_count_list
         avg_events_count_list = []
@@ -1005,7 +1005,7 @@ def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam
         for trace in trace_back:
             stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
     
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run_report, ex_value, '\n'.join(stack_trace)))
     return par_list_output, performance_list_output
 
 

@@ -990,7 +990,7 @@ def ipa_gradient_method_pedestrian(producer, simulation_report, initial_par, lam
             par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
     
             print('****************************************************************************')
-            result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output }
+            result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output, "setReportStatus": "Running" }
             producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
         print('avg event counts:')
         print(np.mean(avg_events_count_list,0))
@@ -1717,16 +1717,16 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
 
-    ipa_gradient_method_pedestrian(initial_par=[30, 35, 15, 20, 10, 100, 5, 8, 3, 3], lam=[10, 10, 5, 5],
-                                   demand_scale=[1, 1], step_size=1, run_time=1000,
-                                   total_iter_num=10, iters_per_par=10, print_mode=False)
+#    ipa_gradient_method_pedestrian(initial_par=[30, 35, 15, 20, 10, 100, 5, 8, 3, 3], lam=[10, 10, 5, 5],
+#                                   demand_scale=[1, 1], step_size=1, run_time=1000,
+#                                   total_iter_num=10, iters_per_par=10, print_mode=False)
 
 
     # sequential one time
-    # ipa_gradient_method_pedestrian_sequential(
-    #     initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
-    #     lam=[0.11, 0.125, 0.01, 0.01],
-    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=1,  print_mode=False)
+    ipa_gradient_method_pedestrian_sequential(
+        initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
+        lam=[0.11, 0.125, 0.01, 0.01],
+        demand_scale=[1.4, 1.4], step_size=1, run_time=43200, iter_num=1,  print_mode=False)
 
 
 

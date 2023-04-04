@@ -19,8 +19,6 @@ kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
 kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
 kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
-kafka_username = os.environ.get('KAFKA_USERNAME') or "smartvillage"
-kafka_password = os.environ.get('KAFKA_PASSWORD') or ""
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
@@ -81,11 +79,9 @@ def test_topic_handler(msg):
                     bootstrap_servers=kafka_brokers
                     , security_protocol=kafka_security_protocol
                     , sasl_mechanism="PLAIN"
-                    , sasl_plain_username=kafka_username
-                    , sasl_plain_password=kafka_password
                     )
 
-        result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": [], "setUpdatedPerformance": [] }
+        result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": [], "setUpdatedPerformance": [], "setReportStatus": "Running" }
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     
         updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
@@ -99,6 +95,9 @@ def test_topic_handler(msg):
                 , total_iter_num=total_iter_num
                 , iters_per_par=iters_per_par
                 , print_mode=False)
+
+        result = { "pk": simulation_report.get("pk"), "setReportStatus": "Completed" }
+        producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples

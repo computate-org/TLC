@@ -892,7 +892,7 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
                                                         print_mode, sumoBinary)
 
         #alert blocking!
-        if mean_queue_length[0] > 20 and mean_queue_length[1] > 18:
+        if mean_queue_length[0] > 18 and mean_queue_length[1] > 16:
             print('WARNING: the road is blocking! Average queue length: '+ str(mean_queue_length[:2]))
             return
 
@@ -1712,7 +1712,7 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
 
-    ipa_gradient_method_pedestrian(initial_par=[50, 80, 15, 40, 10, 10, 8, 8, 5, 5], lam=[30, 10, 30, 30],
+    ipa_gradient_method_pedestrian(initial_par=[20, 80, 20, 80, 10, 10, 8, 8, 5, 5], lam=[50, 50, 30, 30],
                                    demand_scale=[1, 1], step_size=1, run_time=1000,
                                    total_iter_num=10, iters_per_par=3, print_mode=False)
 

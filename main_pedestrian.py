@@ -966,11 +966,11 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, ru
         # print("par_update_step_size: " + str(par_update_step_size))
 
         # theta_1_min
-        par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
+        par_list[0].append(max(5, par_list[0][-1] - par_update_step_size * d_L[0]))
         # theta_1_max
         par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
         # theta_2_min
-        par_list[2].append(max(0.1, par_list[2][-1] - par_update_step_size * d_L[2]))
+        par_list[2].append(max(5, par_list[2][-1] - par_update_step_size * d_L[2]))
         # theta_2_max
         par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
         # theta_3
@@ -993,9 +993,9 @@ def ipa_gradient_method_pedestrian(initial_par, lam, demand_scale, step_size, ru
                 if i % 2 == 1:
                     par_list[i][-1] = max(par_list[i-1][-1], par_list[i][-1]-3)
                 else:
-                    par_list[i][-1] = par_list[i][-1] - 3
+                    par_list[i][-1] = max(5, par_list[i][-1] - 3)
             else:
-                par_list[i][-1] = par_list[i][-1] - 1
+                par_list[i][-1] = np.random.uniform(1, 15)
 
         events_count_list = [0] * 10
 

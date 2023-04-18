@@ -3,6 +3,8 @@ from threading import Event
 from consumer import FlaskKafka
 from kafka import  KafkaProducer
 from sumolib import checkBinary  # noqa
+from kazoo.client import KazooClient
+from kazoo.exceptions import NodeExistsError
 import json
 import signal
 import os
@@ -18,6 +20,7 @@ kafka_brokers = os.environ.get('KAFKA_BROKERS') or "kafka0.apps-crc.testing:3200
 kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
 kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
+kafka_topic_sumo_stop = os.environ.get('KAFKA_TOPIC_SUMO_STOP') or "smartvillage-sumo-stop"
 kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
 # Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
@@ -27,6 +30,10 @@ kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC
 kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
 kafka_max_poll_records = int(os.environ.get('KAFKA_MAX_POLL_RECORDS') or "1")
 kafka_max_poll_interval_ms = int(os.environ.get('KAFKA_MAX_POLL_INTERVAL_MS') or "3000000")
+
+zookeeper_host_name = os.environ.get('ZOOKEEPER_HOST_NAME') or "zookeeper.apps-crc.testing"
+zookeeper_port = int(os.environ.get('ZOOKEEPER_PORT') or "30081")
+
 if("SSL" == kafka_security_protocol):
     bus = FlaskKafka(INTERRUPT_EVENT
              , bootstrap_servers=",".join([kafka_brokers])
@@ -48,12 +55,19 @@ else:
              )
 
 @bus.handle(kafka_topic_sumo_run)
-def test_topic_handler(msg):
+def kafka_topic_sumo_run_handle(msg):
     try:
         print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
         sumoBinary = checkBinary('sumo')
         simulation_report = json.loads(msg.value)
-    
+
+        zk = KazooClient(hosts='%s:%s' % (zookeeper_host_name, zookeeper_port))
+        zk.start()
+        try:
+            zk.create("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes(simulation_report.get("reportStatus"), 'utf-8'), makepath=True)
+        except NodeExistsError as e:
+            pass
+
         initial_par = simulation_report.get('paramInitialPar', [10., 20., 30., 50., 10., 10., 8., 8., 5., 5.])
         initial_par = [float(s) for s in initial_par]
 
@@ -85,7 +99,8 @@ def test_topic_handler(msg):
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     
         updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
-                producer
+                zk
+                , producer
                 , simulation_report
                 , initial_par=initial_par
                 , lam=lam
@@ -98,10 +113,55 @@ def test_topic_handler(msg):
 
         result = { "pk": simulation_report.get("pk"), "setReportStatus": "Completed" }
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
+        zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Completed", 'utf-8'))
+
+        zk.stop()
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
         trace_back = traceback.extract_tb(ex_traceback)
+        result = { "pk": simulation_report.get("pk"), "setReportStatus": "Error" }
+        producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
+        zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Error", 'utf-8'))
+
+        if zk:
+            zk.stop()
+    
+        # Format stacktrace
+        stack_trace = list()
+    
+        for trace in trace_back:
+            stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
+    
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
+
+@bus.handle(kafka_topic_sumo_stop)
+def kafka_topic_sumo_stop_handle(msg):
+    try:
+        simulation_report = json.loads(msg.value)
+
+        zk = KazooClient(hosts='%s:%s' % (zookeeper_host_name, zookeeper_port))
+        zk.start()
+        try:
+            zk.create("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Stop", 'utf-8'), makepath=True)
+        except NodeExistsError as e:
+            pass
+
+        print("received STOP message from %s topic: %s %s" % (kafka_topic_sumo_run, simulation_report.get("pk"), simulation_report.get("objectTitle")))
+    
+
+        zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Stop", 'utf-8'))
+
+        zk.stop()
+    except Exception as e:
+        ex_type, ex_value, ex_traceback = sys.exc_info()
+        # Extract unformatter stack traces as tuples
+        trace_back = traceback.extract_tb(ex_traceback)
+
+        zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Error", 'utf-8'))
+
+        if zk:
+            zk.stop()
     
         # Format stacktrace
         stack_trace = list()

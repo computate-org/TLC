@@ -10,6 +10,7 @@ ENV FLASK_PORT=8081 \
   KAFKA_GROUP=smartvillage-kafka-group \
   KAFKA_TOPIC_SUMO_RUN=smartvillage-sumo-run \
   KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report \
+  KAFKA_TOPIC_SUMO_RUN_ITER=smartvillage-sumo-run-iter \
   KAFKA_USERNAME='smartvillage' \
   KAFKA_PASSWORD='' \
   KAFKA_SECURITY_PROTOCOL=SSL \

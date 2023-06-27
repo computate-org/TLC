@@ -3,6 +3,7 @@ export KAFKA_BROKERS=smartvillage-kafka-kafka-bootstrap:9093
 export KAFKA_GROUP=smartvillage-kafka-group
 export KAFKA_TOPIC_SUMO_RUN=smartvillage-sumo-run
 export KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report
+export KAFKA_TOPIC_SUMO_RUN_ITER=smartvillage-sumo-run-iter
 export KAFKA_SECURITY_PROTOCOL=SSL
 export KAFKA_SSL_CAFILE=/opt/app-root/src/certs/ca.crt
 export KAFKA_SSL_CERTFILE='/opt/app-root/src/certs/user.crt'

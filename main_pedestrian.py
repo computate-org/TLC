@@ -908,7 +908,6 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
         performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time,
                                  mean_waiting_time_total] + list(mean_queue_length))
 
-
     return np.mean(d_L_list, 0), np.mean(performance_list, 0)
 
 
@@ -1649,12 +1648,16 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
 
 
 def generate_plots(par, performance):
+    """
+    performance: [mean_waiting_time_1, mean_waiting_time_2,
+                 mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, queue_length*4]
+    """
     x = np.arange(len(performance[0]))
 #    performance plot
     plt.figure()
-    plt.plot(x, performance[-1], label='vehicle and pedestrian', marker='.')
-    plt.plot(x, performance[-3], label='only vehicle', marker='v')
-    plt.plot(x, performance[-2], label='only pedestrian', marker='+')
+    plt.plot(x, performance[4], label='vehicle and pedestrian', marker='.')
+    plt.plot(x, performance[2], label='only vehicle', marker='v')
+    plt.plot(x, performance[3], label='only pedestrian', marker='+')
     plt.xlabel('iterations')
     plt.ylabel("average waiting time(s)")
     # plt.xticks(np.arange(0,20,2))
@@ -1668,8 +1671,8 @@ def generate_plots(par, performance):
     plt.figure()
     plt.plot(x, par[0], "r--", label='vehicle(West-East)_min')
     plt.plot(x, par[1], 'r', label='vehicle(West-East)_max')
-    plt.plot(x, par[2], 'g--', label='vehicle(South-North)_min', marker = '+')
-    plt.plot(x, par[3], 'g', label='vehicle(South-North)_max', marker = '+')
+    plt.plot(x, par[2], 'g--', label='vehicle(South-North)_min', marker='+')
+    plt.plot(x, par[3], 'g', label='vehicle(South-North)_max', marker='+')
     plt.xlabel('iterations')
     plt.ylabel("GREEN length threshold")
     # plt.xticks(np.arange(0,20,2))
@@ -1712,9 +1715,9 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
 
-    ipa_gradient_method_pedestrian(initial_par=[20, 80, 20, 80, 10, 10, 8, 8, 5, 5], lam=[50, 50, 30, 30],
+    ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[15, 10, 5, 5],
                                    demand_scale=[1, 1], step_size=1, run_time=1000,
-                                   total_iter_num=10, iters_per_par=3, print_mode=False)
+                                   total_iter_num=5, iters_per_par=3, print_mode=False)
 
 
     # sequential one time

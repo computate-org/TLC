@@ -316,6 +316,19 @@ def get_waiting_ped_id():
     return waiting_ped_id
 
 
+def get_det_ped_id():
+    det_ped_id = [[], []]
+    for wa in WALKINGAREAS:
+        peds = traci.edge.getLastStepPersonIDs(wa)
+        for ped in peds:
+            if traci.person.getNextEdge(ped) in CROSSING_13:
+                det_ped_id[0].append(ped)
+            elif traci.person.getNextEdge(ped) in CROSSING_24:
+                det_ped_id[1].append(ped)
+    return det_ped_id
+
+
+
 def get_crossing_ped_id():
     crossing_ped_id = [[], []]
     for edge in CROSSING_13:
@@ -694,6 +707,7 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
     h = [0.55] * 4
 
     det_veh_num = [[0] for _ in range(2)]  # vehicle num at each time step  [[0], [0]]
+    det_ped_num = [[0] for _ in range(2)]
     queue_length = [[0] for _ in range(4)]  # [[0], [0], [0], [0]]
     depart_veh_num = [[0] for _ in range(2)]
     depart_ped_num = [[0] for _ in range(2)]
@@ -722,11 +736,14 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
         # pedestrian condition
         waiting_ped_id = get_waiting_ped_id()
+        det_ped_id = get_det_ped_id()
         crossing_ped_id = get_crossing_ped_id()
 
         # update state list
         det_veh_num[0].append(traci.lanearea.getLastStepVehicleNumber("det_13"))
         det_veh_num[1].append(traci.lanearea.getLastStepVehicleNumber("det_42"))
+        det_ped_num[0].append(len(det_ped_id[0]))
+        det_ped_num[1].append(len(det_ped_id[1]))
         queue_length[0].append(traci.lanearea.getJamLengthVehicle("det_13"))
         queue_length[1].append(traci.lanearea.getJamLengthVehicle("det_42"))
         queue_length[2].append(len(waiting_ped_id[0]))
@@ -816,7 +833,6 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
             jam[3] = []
             alpha_rate[3] = beta_rate[3]
 
-
         # update event time derivative
         idx = int(not green_1)
         light_switch, d_tau = update_event_time_derivative(idx, step_size, det_veh_num, queue_length, f, alpha_rate, h,
@@ -831,17 +847,6 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
         if not np.all(np.array(d_tau) == 0):
             last_switch_dtau = d_tau
-
-        if print_mode:
-            print("time:" + str(step))
-            print("last_switch:" + str(last_switch))
-            print("last_push_button: " + str(last_push_button))
-            print("green in 13:" + str(green_1))
-            # print("jam_length_vehicle:  " + str(traci.lanearea.getJamLengthVehicle("det_13")))
-            # print("last_step_veh_num:  " + str(traci.lanearea.getLastStepVehicleNumber("det_13")))
-            # print("alpha_1: "+str(np.mean(alpha_1)))
-            # print("beta_1: "+str(np.mean(beta_1)))
-            print("d_tau:" + str(d_tau))
 
         # update state derivative
         d_x, NEP, push_button = update_state_derivative(green_1, step_size, last_switch, NEP, queue_length, alpha_rate,
@@ -869,7 +874,7 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
     sys.stdout.flush()
 
     return np.array(d_L) * 1.0 / run_time, mean_waiting_time_1, mean_waiting_time_2, \
-           mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total
+           mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, list(np.mean(det_veh_num, 1))+list(np.mean(det_ped_num,1))
 
 
 # time driven
@@ -878,7 +883,6 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
 
     d_L_list = []
     performance_list = []
-
     # fix_seed = False
     # if iters_per_par == 1:
     #     fix_seed = True
@@ -887,27 +891,25 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
     while iters < iters_per_par:
         iters += 1
         d_L, mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time, \
-        mean_waiting_time_total = one_iter_ped_adaptive(par, lam, demand_scale, step_size, run_time, fix_seed,
+        mean_waiting_time_total, mean_queue_length = one_iter_ped_adaptive(par, lam, demand_scale, step_size, run_time, fix_seed,
                                                         print_mode, sumoBinary)
-        # exclude the outliers
-        if np.any(np.array(d_L) > 1000) or np.any(np.array(d_L) < -1000):
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print("extreme d_L  " + str(d_L) + " ----- delete")
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            iters -= 1
-            continue
-        d_L_list.append(d_L)
-        performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time,
-                                 mean_waiting_time_total])
 
-        # print("d_L:")
-        # pprint(d_L_list[-1])
-        # print("for par " + str(par) + ":")
-        # print(performance_list[-1])
-        # if iters == iters_per_par:
-        #     print("mean_waiting_time_total ----" + str([i[-1] for i in performance_list]))
-        #     print("avg: " + str(np.mean([i[-1] for i in performance_list])))
-        #     print("==============")
+        #alert blocking!
+        if mean_queue_length[0] > 18 and mean_queue_length[1] > 16:
+            print('WARNING: the road is blocking! Average queue length: '+ str(mean_queue_length[:2]))
+            return
+
+        # exclude the outliers
+        # if np.any(np.array(d_L) > 1000) or np.any(np.array(d_L) < -1000):
+        #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        #     print("extreme d_L  " + str(d_L) + " ----- delete")
+        #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        #     iters -= 1
+        #     continue
+        d_L_list.append(d_L)
+
+        performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time,
+                                 mean_waiting_time_total] + list(mean_queue_length))
 
     return np.mean(d_L_list, 0), np.mean(performance_list, 0)
 
@@ -931,21 +933,19 @@ def ipa_gradient_method_pedestrian(zk, producer, simulation_report, initial_par,
         """ run ipa method to update par"""
         lam = np.array(lam)/60.
         par_list = [[i] for i in initial_par]
-    
         d_L_list = []
         performance_list = []
-    
         iter_num = 0
     
         while iter_num < total_iter_num:
+            iter_num += 1
             if zookeeper_report_status != 'Stop':
-                iter_num += 1
-        
                 d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                                iters_per_par)
+                                            iters_per_par)
         
                 # update performance
-                performance_list.append(performance)
+                performance_list.append(performance) #performance: [mean_waiting_time_1, mean_waiting_time_2,
+                                                    # mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, queue_length*4]
                 d_L_list.append(d_L)
                 print('****************************************************************************')
                 # print("dL: " + str(d_L))
@@ -956,18 +956,18 @@ def ipa_gradient_method_pedestrian(zk, producer, simulation_report, initial_par,
                     # print(str([round(i, 3) for i in par]) + ",")
                 print(par_list_output)
         
-                print("performance:")
+        
                 # print([round(i, 3) for i in [i[-1] for i in performance_list]])
                 performance_list_output = []
-                for j in range(5):
+                for j in range(9):
                     performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
-                print(performance_list_output)
-        
-        
-                print("events count:")
-                print(events_count_list)
+                print("performance:")
+                print(performance_list_output[:5])
+                print("avg queue length:")
+                print(performance_list_output[5:])
+                # print("events count:")
+                # print(events_count_list)
                 avg_events_count_list.append(events_count_list)
-                events_count_list = [0]*10
         
                 generate_plots(par_list_output, performance_list_output)
         
@@ -976,11 +976,11 @@ def ipa_gradient_method_pedestrian(zk, producer, simulation_report, initial_par,
                 # print("par_update_step_size: " + str(par_update_step_size))
         
                 # theta_1_min
-                par_list[0].append(max(0.1, par_list[0][-1] - par_update_step_size * d_L[0]))
+                par_list[0].append(max(5, par_list[0][-1] - par_update_step_size * d_L[0]))
                 # theta_1_max
                 par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
                 # theta_2_min
-                par_list[2].append(max(0.1, par_list[2][-1] - par_update_step_size * d_L[2]))
+                par_list[2].append(max(5, par_list[2][-1] - par_update_step_size * d_L[2]))
                 # theta_2_max
                 par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
                 # theta_3
@@ -996,11 +996,25 @@ def ipa_gradient_method_pedestrian(zk, producer, simulation_report, initial_par,
                 # s_4
                 par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
         
+                # if event count is zero, arbitrarily change its number
+                zero_count_idx = [i for i in range(len(events_count_list)) if events_count_list[i] == 0]
+                for i in zero_count_idx:
+                    if i < 6:
+                        if i % 2 == 1:
+                            par_list[i][-1] = max(par_list[i-1][-1], par_list[i][-1]-3)
+                        else:
+                            par_list[i][-1] = max(5, par_list[i][-1] - 3)
+                    else:
+                        par_list[i][-1] = np.random.uniform(1, 15)
+        
+                events_count_list = [0] * 10
+        
                 print('****************************************************************************')
                 result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output, "setReportStatus": "Running" }
                 producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
-        print('avg event counts:')
-        print(np.mean(avg_events_count_list,0))
+        print('event counts:')
+        print(avg_events_count_list)
+        print(np.mean(avg_events_count_list, 0))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
@@ -1660,12 +1674,16 @@ def ipa_gradient_method_pedestrian_event_driven(initial_par, lam, demand_scale, 
 
 
 def generate_plots(par, performance):
+    """
+    performance: [mean_waiting_time_1, mean_waiting_time_2,
+                 mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, queue_length*4]
+    """
     x = np.arange(len(performance[0]))
 #    performance plot
     plt.figure()
-    plt.plot(x, performance[-1], label='vehicle and pedestrian', marker='.')
-    plt.plot(x, performance[-3], label='only vehicle', marker='v')
-    plt.plot(x, performance[-2], label='only pedestrian', marker='+')
+    plt.plot(x, performance[4], label='vehicle and pedestrian', marker='.')
+    plt.plot(x, performance[2], label='only vehicle', marker='v')
+    plt.plot(x, performance[3], label='only pedestrian', marker='+')
     plt.xlabel('iterations')
     plt.ylabel("average waiting time(s)")
     # plt.xticks(np.arange(0,20,2))
@@ -1677,10 +1695,10 @@ def generate_plots(par, performance):
 
 #     parameter plot
     plt.figure()
-    plt.plot(x, par[0], "r--", label = r'$\theta_1^{min}$')
-    plt.plot(x, par[1], 'r', label = r'$\theta_1^{max}$')
-    plt.plot(x, par[2], 'g--', label = r'$\theta_2^{min}$', marker = '+')
-    plt.plot(x, par[3], 'g', label = r'$\theta_2^{max}$', marker = '+')
+    plt.plot(x, par[0], "r--", label='vehicle(West-East)_min')
+    plt.plot(x, par[1], 'r', label='vehicle(West-East)_max')
+    plt.plot(x, par[2], 'g--', label='vehicle(South-North)_min', marker='+')
+    plt.plot(x, par[3], 'g', label='vehicle(South-North)_max', marker='+')
     plt.xlabel('iterations')
     plt.ylabel("GREEN length threshold")
     # plt.xticks(np.arange(0,20,2))
@@ -1692,8 +1710,8 @@ def generate_plots(par, performance):
 
     # plt.figure(figsize=(4, 6))
     plt.figure()
-    plt.plot(x, par[4], label=r'$\theta_3$', marker='.')
-    plt.plot(x, par[5], label=r"$\theta_4$", marker='v')
+    plt.plot(x, par[4], label='pedestrian(South-North)', marker='.')
+    plt.plot(x, par[5], label='pedestrian(West-East)', marker='v')
     plt.xlabel('iterations')
     plt.ylabel("GREEN length threshold")
     # plt.xticks(np.arange(0,20,2))
@@ -1704,10 +1722,10 @@ def generate_plots(par, performance):
     # plt.show()
 
     plt.figure()
-    plt.plot(x, par[6], label = "$s_1$", marker = '.')
-    plt.plot(x, par[7], label = "$s_2$", marker = '+')
-    plt.plot(x, par[8], label = "$s_3$", marker = 'v')
-    plt.plot(x, par[9], label = "$s_4$", marker = 0)
+    plt.plot(x, par[6], label="vehicle(West-East)", marker='.')
+    plt.plot(x, par[7], label="vehicle(South-North)", marker='+')
+    plt.plot(x, par[8], label="pedestrian(South-North)", marker='v')
+    plt.plot(x, par[9], label="pedestrian(West-East)", marker=0)
     plt.xlabel('iterations')
     plt.ylabel("queue content threshold")
     # plt.grid()
@@ -1724,16 +1742,16 @@ if __name__ == "__main__":
 
     # pedestrian_baseline_test()
 
-#    ipa_gradient_method_pedestrian(initial_par=[30, 35, 15, 20, 10, 100, 5, 8, 3, 3], lam=[10, 10, 5, 5],
-#                                   demand_scale=[1, 1], step_size=1, run_time=1000,
-#                                   total_iter_num=10, iters_per_par=10, print_mode=False)
+    ipa_gradient_method_pedestrian(initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5], lam=[15, 10, 5, 5],
+                                   demand_scale=[1, 1], step_size=1, run_time=1000,
+                                   total_iter_num=5, iters_per_par=3, print_mode=False)
 
 
     # sequential one time
-    ipa_gradient_method_pedestrian_sequential(
-        initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
-        lam=[0.11, 0.125, 0.01, 0.01],
-        demand_scale=[1.4, 1.4], step_size=1, run_time=43200, iter_num=1,  print_mode=False)
+    # ipa_gradient_method_pedestrian_sequential(
+    #     initial_par=[10, 20, 30, 50, 10, 10, 8, 8, 5, 5],
+    #     lam=[0.11, 0.125, 0.01, 0.01],
+    #     demand_scale=1.4, step_size=1, run_time=43200, iter_num=1,  print_mode=False)
 
 
 

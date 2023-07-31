@@ -5,6 +5,7 @@ from kafka import  KafkaProducer
 from sumolib import checkBinary  # noqa
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
+import sumolib
 import json
 import signal
 import os
@@ -21,13 +22,14 @@ kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
 kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
 kafka_topic_sumo_stop = os.environ.get('KAFKA_TOPIC_SUMO_STOP') or "smartvillage-sumo-stop"
+kafka_topic_location_info = os.environ.get('KAFKA_TOPIC_LOCATION_INFO') or "smartvillage-sumo-location-info"
 kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
-# Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/usr/local/src/TLC/ca.crt"
-# Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.crt}"
-kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/usr/local/src/TLC/user.crt"
-# Run: oc -n smart-village-view get secret/smartvillage-kafka-cluster-ca-cert -o jsonpath="{.data.ca\.password}"
-kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/usr/local/src/TLC/user.key"
+# Run: oc extract -n smartvillage secret/smartvillage-kafka-cluster-ca-cert --to=/opt/kafka/truststore/ --keys=ca.crt --confirm
+kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/opt/kafka/truststore/ca.crt"
+# Run: oc extract -n smartvillage secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.crt --confirm
+kafka_ssl_certfile = os.environ.get('KAFKA_SSL_CERTFILE') or "/opt/kafka/keystore/user.crt"
+# Run: oc extract -n smartvillage secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.key --confirm
+kafka_ssl_keyfile = os.environ.get('KAFKA_SSL_KEYFILE') or "/opt/kafka/keystore/user.key"
 kafka_max_poll_records = int(os.environ.get('KAFKA_MAX_POLL_RECORDS') or "1")
 kafka_max_poll_interval_ms = int(os.environ.get('KAFKA_MAX_POLL_INTERVAL_MS') or "3000000")
 
@@ -42,7 +44,7 @@ if("SSL" == kafka_security_protocol):
              , ssl_cafile=kafka_ssl_cafile
              , ssl_certfile=kafka_ssl_certfile
              , ssl_keyfile=kafka_ssl_keyfile
-             , max_poll_interval_ms=kafka_max_poll_interval_ms
+#             , max_poll_interval_ms=kafka_max_poll_interval_ms
              , max_poll_records=kafka_max_poll_records
              )
 else:
@@ -50,7 +52,7 @@ else:
              , bootstrap_servers=",".join([kafka_brokers])
              , group_id=kafka_group
              , security_protocol=kafka_security_protocol
-             , max_poll_interval_ms=kafka_max_poll_interval_ms
+#             , max_poll_interval_ms=kafka_max_poll_interval_ms
              , max_poll_records=kafka_max_poll_records
              )
 
@@ -170,6 +172,29 @@ def kafka_topic_sumo_stop_handle(msg):
             stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
     
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
+
+@bus.handle(kafka_topic_location_info)
+def kafka_topic_sumo_location_info(msg):
+    try:
+        net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection.net.xml')
+        edge_shape = "106.47,992.46 108.28,988.83 111.60,983.46 126.11,964.77 142.09,945.49 170.01,911.69"
+        edge_points = edge_shape.split(' ')
+        lat = []
+        lon = []
+        for edge_point in edge_points:
+            edge_point_parts = edge_point.split(',')
+            coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
+            lat.append(float(coords[1]))
+            lon.append(float(coords[0]))
+        print("lat: %s" % lat)
+        print("lon: %s" % lon)
+    except Exception as e:
+        ex_type, ex_value, ex_traceback = sys.exc_info()
+        # Extract unformatter stack traces as tuples
+        trace_back = traceback.extract_tb(ex_traceback)
+        # Format stacktrace
+        stack_trace = list()
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(stack_trace)))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)

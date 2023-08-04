@@ -3,3 +3,4 @@ kafka-python
 sumolib
 matplotlib
 kazoo
+lxml

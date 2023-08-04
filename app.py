@@ -5,6 +5,7 @@ from kafka import  KafkaProducer
 from sumolib import checkBinary  # noqa
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
+from lxml import etree
 import sumolib
 import json
 import signal
@@ -23,6 +24,7 @@ kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-s
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
 kafka_topic_sumo_stop = os.environ.get('KAFKA_TOPIC_SUMO_STOP') or "smartvillage-sumo-stop"
 kafka_topic_location_info = os.environ.get('KAFKA_TOPIC_LOCATION_INFO') or "smartvillage-sumo-location-info"
+kafka_topic_simulation_info = os.environ.get('KAFKA_TOPIC_SIMULATION_INFO') or "smartvillage-sumo-simulation-info"
 kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
 # Run: oc extract -n smartvillage secret/smartvillage-kafka-cluster-ca-cert --to=/opt/kafka/truststore/ --keys=ca.crt --confirm
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/opt/kafka/truststore/ca.crt"
@@ -173,28 +175,83 @@ def kafka_topic_sumo_stop_handle(msg):
     
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
 
-@bus.handle(kafka_topic_location_info)
-def kafka_topic_sumo_location_info(msg):
+@bus.handle(kafka_topic_simulation_info)
+def kafka_topic_sumo_simulation_info(msg):
     try:
-        net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection.net.xml')
-        edge_shape = "106.47,992.46 108.28,988.83 111.60,983.46 126.11,964.77 142.09,945.49 170.01,911.69"
-        edge_points = edge_shape.split(' ')
-        lat = []
-        lon = []
-        for edge_point in edge_points:
-            edge_point_parts = edge_point.split(',')
-            coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
-            lat.append(float(coords[1]))
-            lon.append(float(coords[0]))
-        print("lat: %s" % lat)
-        print("lon: %s" % lon)
+
+        lane_area_detector_ids = []
+        lane_area_detector_lanes = []
+        lane_area_detector_paths = []
+
+        e1_detector_ids = []
+        e1_detector_lanes = []
+        e1_detector_paths = []
+
+        traffic_simulation = json.loads(msg.value)
+        sumocfg_path = traffic_simulation.get('sumocfgPath')
+        if sumocfg_path:
+            sumocfg = etree.parse(sumocfg_path)
+            net_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/net-file/@value')]
+            additional_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/additional-files/@value')]
+
+            for additional_file_path in additional_file_paths:
+                additional_file = etree.parse(additional_file_path)
+
+                lane_area_detectors = additional_file.xpath('//additional/laneAreaDetector')
+                for lane_area_detector in lane_area_detectors:
+                    lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
+                    lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
+                    lane_area_detector_paths.append(os.path.abspath(os.path.join(lane_area_detector.xpath('@file')[0], '..', additional_file_path)))
+
+                e1_detectors = additional_file.xpath('//additional/e1Detector')
+                for e1_detector in e1_detectors:
+                    e1_detector_ids.append(e1_detector.xpath('@id')[0])
+                    e1_detector_lanes.append(e1_detector.xpath('@lanes')[0])
+                    e1_detector_paths.append(os.path.abspath(os.path.join(e1_detector.xpath('@file')[0], '..', additional_file_path)))
+
+        patch_body = {
+
+            "setLaneAreaDetectorIds": lane_area_detector_ids
+            , "setLaneAreaDetectorLanes": lane_area_detector_lanes
+            , "setLaneAreaDetectorPaths": lane_area_detector_paths
+
+            , "setE1DetectorIds": e1_detector_ids
+            , "setE1DetectorLanes": e1_detector_lanes
+            , "setE1DetectorPaths": e1_detector_paths
+        }
+        print(patch_body)
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
         trace_back = traceback.extract_tb(ex_traceback)
-        # Format stacktrace
-        stack_trace = list()
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(stack_trace)))
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
+
+@bus.handle(kafka_topic_location_info)
+def kafka_topic_sumo_location_info(msg):
+    try:
+        net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection_pedestrian.net.xml')
+        edge_shapes = [
+            "175.13,734.43 177.69,752.95 180.82,774.94 183.17,784.52"
+            , "187.08,795.35 189.01,799.98 196.82,813.25 208.02,832.13"
+            , "208.17,832.40 214.93,844.44 216.53,846.30"
+            ]
+        for edge_shape in edge_shapes:
+            edge_points = edge_shape.split(' ')
+            lat = []
+            lon = []
+            for edge_point in edge_points:
+                edge_point_parts = edge_point.split(',')
+                coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
+                lat.append(float(coords[1]))
+                lon.append(float(coords[0]))
+            print()
+            print("lat: %s" % lat)
+            print("lon: %s" % lon)
+    except Exception as e:
+        ex_type, ex_value, ex_traceback = sys.exc_info()
+        # Extract unformatter stack traces as tuples
+        trace_back = traceback.extract_tb(ex_traceback)
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
 
 def listen_kill_server():
     signal.signal(signal.SIGTERM, bus.interrupted_process)

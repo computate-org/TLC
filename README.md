@@ -26,9 +26,9 @@ podman push computateorg/smartvillage-traffic-light-controller-sumo:computate-ap
 ```bash
 sudo install -d -o $USER -g $USER -m 771 /opt/kafka/truststore
 sudo install -d -o $USER -g $USER -m 771 /opt/kafka/keystore
-oc extract -n smartvillage secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.crt --confirm
-oc extract -n smartvillage secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.key --confirm
-oc extract -n smartvillage secret/smartvillage-kafka-cluster-ca-cert --to=/opt/kafka/truststore/ --keys=ca.crt --confirm
+oc extract -n kafka secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.crt --confirm
+oc extract -n kafka secret/smartvillage-kafka --to=/opt/kafka/keystore/ --keys=user.key --confirm
+oc extract -n kafka secret/default-cluster-ca-cert --to=/opt/kafka/truststore/ --keys=ca.crt --confirm
 ```
 
 ### Run the container for local development

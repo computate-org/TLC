@@ -38,9 +38,12 @@ class FlaskKafka():
                 handler(msg)
             self.consumer.commit()
         except Exception as e:
-            self.logger.critical(str(e), exc_info=1)
-            self.consumer.close()
-            signal.raise_signal(signal.SIGTERM)
+            if("CommitFailedError:" in str(e)):
+                self.logger.warn(str(e))
+            else:
+                self.logger.critical(str(e), exc_info=1)
+                self.consumer.close()
+                signal.raise_signal(signal.SIGTERM)
 
     def signal_term_handler(self, signal, frame):
         self.logger.info("closing consumer")

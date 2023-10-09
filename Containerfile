@@ -7,7 +7,8 @@ EXPOSE 8081/tcp
 
 ENV FLASK_PORT=8081 \
   KAFKA_BROKERS=kafka0.apps-crc.testing:32000 \
-  KAFKA_GROUP=smartvillage-kafka-group \
+  KAFKA_GROUP_RUN=smartvillage-kafka-run \
+  KAFKA_GROUP_STOP=smartvillage-kafka-stop \
   KAFKA_TOPIC_SUMO_RUN=smartvillage-sumo-run \
   KAFKA_TOPIC_SUMO_RUN_REPORT=smartvillage-sumo-run-report \
   KAFKA_USERNAME='smartvillage' \

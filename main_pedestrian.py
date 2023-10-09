@@ -878,7 +878,7 @@ def one_iter_ped_adaptive(theta, lam, demand_scale, step_size, run_time, fix_see
 
 
 # time driven
-def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix_seed=False, print_mode=False):
+def repeat_iters(zk, producer, simulation_report, kafka_topic_sumo_run_report, iter_num, total_iter_num, par, lam, demand_scale, step_size, run_time, iters_per_par, fix_seed=False, print_mode=False):
     """repeat the test with same parameter, but different random seed"""
 
     d_L_list = []
@@ -910,6 +910,9 @@ def repeat_iters(par, lam, demand_scale, step_size, run_time, iters_per_par, fix
 
         performance_list.append([mean_waiting_time_1, mean_waiting_time_2, mean_veh_waiting_time, mean_ped_waiting_time,
                                  mean_waiting_time_total] + list(mean_queue_length))
+        if iters < iters_per_par:
+            result = { "pk": simulation_report.get("pk"), "setReportProgress": str(int(((iter_num - 1) / total_iter_num + (iters * (1 / iters_per_par) * (1 / total_iter_num))) * 100)) }
+            producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
 
     return np.mean(d_L_list, 0), np.mean(performance_list, 0)
 
@@ -920,113 +923,105 @@ def ipa_gradient_method_pedestrian(zk, producer, simulation_report, initial_par,
     par_list_output = None
     performance_list_output = None
 
-    (zookeeper_report_status, node_stat) = zk.get("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"))
-    print("zookeeper_report_status: %s" % zookeeper_report_status)
-
-
     kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
-    try:
+    percent_complete = 0.0
+
+    global events_count_list
+    avg_events_count_list = []
+    par_update_step_size = 30
+    """ run ipa method to update par"""
+    lam = np.array(lam)/60.
+    par_list = [[i] for i in initial_par]
+    d_L_list = []
+    performance_list = []
+    iter_num = 0
+
+    while iter_num < total_iter_num:
+        iter_num += 1
+
+        (zookeeper_report_status, node_stat) = zk.get("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"))
+
+        print("zookeeper_report_status: %s" % zookeeper_report_status)
+        if zookeeper_report_status == b'Running':
+            print("par_list: %s" % par_list)
+            par_var = [par[-1] for par in par_list]
+            print("par_var: %s" % par_var)
+            d_L, performance = repeat_iters(zk, producer, simulation_report, kafka_topic_sumo_run_report, iter_num, total_iter_num, par_var, lam, demand_scale, step_size, run_time,
+                                        iters_per_par)
     
-        global events_count_list
-        avg_events_count_list = []
-        par_update_step_size = 30
-        """ run ipa method to update par"""
-        lam = np.array(lam)/60.
-        par_list = [[i] for i in initial_par]
-        d_L_list = []
-        performance_list = []
-        iter_num = 0
+            # update performance
+            performance_list.append(performance) #performance: [mean_waiting_time_1, mean_waiting_time_2,
+                                                # mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, queue_length*4]
+            d_L_list.append(d_L)
+            print('****************************************************************************')
+            # print("dL: " + str(d_L))
+            print("parameters:")
+            par_list_output = []
+            for par in par_list:
+                par_list_output.append([round(i, 3) for i in par])
+                # print(str([round(i, 3) for i in par]) + ",")
+            print(par_list_output)
     
-        while iter_num < total_iter_num:
-            iter_num += 1
-            if zookeeper_report_status != 'Stop':
-                d_L, performance = repeat_iters([par[-1] for par in par_list], lam, demand_scale, step_size, run_time,
-                                            iters_per_par)
-        
-                # update performance
-                performance_list.append(performance) #performance: [mean_waiting_time_1, mean_waiting_time_2,
-                                                    # mean_veh_waiting_time, mean_ped_waiting_time, mean_waiting_time_total, queue_length*4]
-                d_L_list.append(d_L)
-                print('****************************************************************************')
-                # print("dL: " + str(d_L))
-                print("parameters:")
-                par_list_output = []
-                for par in par_list:
-                    par_list_output.append([round(i, 3) for i in par])
-                    # print(str([round(i, 3) for i in par]) + ",")
-                print(par_list_output)
-        
-        
-                # print([round(i, 3) for i in [i[-1] for i in performance_list]])
-                performance_list_output = []
-                for j in range(9):
-                    performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
-                print("performance:")
-                print(performance_list_output[:5])
-                print("avg queue length:")
-                print(performance_list_output[5:])
-                # print("events count:")
-                # print(events_count_list)
-                avg_events_count_list.append(events_count_list)
-        
-                generate_plots(par_list_output, performance_list_output)
-        
-                # update parameters
-                par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 1., 4., 0.5, 1.5)
-                # print("par_update_step_size: " + str(par_update_step_size))
-        
-                # theta_1_min
-                par_list[0].append(max(5, par_list[0][-1] - par_update_step_size * d_L[0]))
-                # theta_1_max
-                par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
-                # theta_2_min
-                par_list[2].append(max(5, par_list[2][-1] - par_update_step_size * d_L[2]))
-                # theta_2_max
-                par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
-                # theta_3
-                par_list[4].append(max(0.1, par_list[4][-1] - par_update_step_size * d_L[4]))
-                # theta_4
-                par_list[5].append(max(0.1, par_list[5][-1] - par_update_step_size * d_L[5]))
-                # s_1
-                par_list[6].append(max(0.1, par_list[6][-1] - par_update_step_size * d_L[6]))
-                # s_2
-                par_list[7].append(max(0.1, par_list[7][-1] - par_update_step_size * d_L[7]))
-                # s_3
-                par_list[8].append(max(0.1, par_list[8][-1] - par_update_step_size * d_L[8]))
-                # s_4
-                par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
-        
-                # if event count is zero, arbitrarily change its number
-                zero_count_idx = [i for i in range(len(events_count_list)) if events_count_list[i] == 0]
-                for i in zero_count_idx:
-                    if i < 6:
-                        if i % 2 == 1:
-                            par_list[i][-1] = max(par_list[i-1][-1], par_list[i][-1]-3)
-                        else:
-                            par_list[i][-1] = max(5, par_list[i][-1] - 3)
+    
+            # print([round(i, 3) for i in [i[-1] for i in performance_list]])
+            performance_list_output = []
+            for j in range(9):
+                performance_list_output.append([round(i, 3) for i in [i[j] for i in performance_list]])
+            print("performance:")
+            print(performance_list_output[:5])
+            print("avg queue length:")
+            print(performance_list_output[5:])
+            # print("events count:")
+            # print(events_count_list)
+            avg_events_count_list.append(events_count_list)
+    
+            generate_plots(par_list_output, performance_list_output)
+    
+            # update parameters
+            par_update_step_size = get_par_update_step_size(par_update_step_size, d_L_list, 1., 4., 0.5, 1.5)
+            # print("par_update_step_size: " + str(par_update_step_size))
+    
+            # theta_1_min
+            par_list[0].append(max(5, par_list[0][-1] - par_update_step_size * d_L[0]))
+            # theta_1_max
+            par_list[1].append(max(par_list[0][-1], par_list[1][-1] - par_update_step_size * d_L[1]))
+            # theta_2_min
+            par_list[2].append(max(5, par_list[2][-1] - par_update_step_size * d_L[2]))
+            # theta_2_max
+            par_list[3].append(max(par_list[2][-1], par_list[3][-1] - par_update_step_size * d_L[3]))
+            # theta_3
+            par_list[4].append(max(0.1, par_list[4][-1] - par_update_step_size * d_L[4]))
+            # theta_4
+            par_list[5].append(max(0.1, par_list[5][-1] - par_update_step_size * d_L[5]))
+            # s_1
+            par_list[6].append(max(0.1, par_list[6][-1] - par_update_step_size * d_L[6]))
+            # s_2
+            par_list[7].append(max(0.1, par_list[7][-1] - par_update_step_size * d_L[7]))
+            # s_3
+            par_list[8].append(max(0.1, par_list[8][-1] - par_update_step_size * d_L[8]))
+            # s_4
+            par_list[9].append(max(0.1, par_list[9][-1] - par_update_step_size * d_L[9]))
+    
+            # if event count is zero, arbitrarily change its number
+            zero_count_idx = [i for i in range(len(events_count_list)) if events_count_list[i] == 0]
+            for i in zero_count_idx:
+                if i < 6:
+                    if i % 2 == 1:
+                        par_list[i][-1] = max(par_list[i-1][-1], par_list[i][-1]-3)
                     else:
-                        par_list[i][-1] = np.random.uniform(1, 15)
-        
-                events_count_list = [0] * 10
-        
-                print('****************************************************************************')
-                result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output, "setReportStatus": "Running" }
+                        par_list[i][-1] = max(5, par_list[i][-1] - 3)
+                else:
+                    par_list[i][-1] = np.random.uniform(1, 15)
+    
+            events_count_list = [0] * 10
+    
+            print('****************************************************************************')
+            if iter_num < total_iter_num:
+                result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": par_list_output, "setUpdatedPerformance": performance_list_output, "setReportProgress": str(int(iter_num / total_iter_num * 100)) }
                 producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
-        print('event counts:')
-        print(avg_events_count_list)
-        print(np.mean(avg_events_count_list, 0))
-    except Exception as e:
-        ex_type, ex_value, ex_traceback = sys.exc_info()
-        # Extract unformatter stack traces as tuples
-        trace_back = traceback.extract_tb(ex_traceback)
-    
-        # Format stacktrace
-        stack_trace = list()
-    
-        for trace in trace_back:
-            stack_trace.append("File : %s , Line : %d, Func.Name : %s, Message : %s" % (trace[0], trace[1], trace[2], trace[3]))
-    
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run_report, ex_value, '\n'.join(stack_trace)))
+    print('event counts:')
+    print(avg_events_count_list)
+    print(np.mean(avg_events_count_list, 0))
     return par_list_output, performance_list_output
 
 

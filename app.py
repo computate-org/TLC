@@ -19,12 +19,15 @@ app = Flask(__name__)
 INTERRUPT_EVENT = Event()
 
 kafka_brokers = os.environ.get('KAFKA_BROKERS') or "kafka0.apps-crc.testing:32000"
-kafka_group = os.environ.get('KAFKA_GROUP') or "smartvillage-kafka-group"
+kafka_group_run = os.environ.get('KAFKA_GROUP_RUN') or "smartvillage-kafka-run"
+kafka_group_stop = os.environ.get('KAFKA_GROUP_STOP') or "smartvillage-kafka-stop"
 kafka_topic_sumo_run = os.environ.get('KAFKA_TOPIC_SUMO_RUN') or "smartvillage-sumo-run"
 kafka_topic_sumo_run_report = os.environ.get('KAFKA_TOPIC_SUMO_RUN_REPORT') or "smartvillage-sumo-run-report"
 kafka_topic_sumo_stop = os.environ.get('KAFKA_TOPIC_SUMO_STOP') or "smartvillage-sumo-stop"
-kafka_topic_location_info = os.environ.get('KAFKA_TOPIC_LOCATION_INFO') or "smartvillage-sumo-location-info"
 kafka_topic_simulation_info = os.environ.get('KAFKA_TOPIC_SIMULATION_INFO') or "smartvillage-sumo-simulation-info"
+kafka_topic_simulation_info_patch = os.environ.get('KAFKA_TOPIC_SIMULATION_INFO_PATCH') or "smartvillage-sumo-simulation-info-patch"
+kafka_topic_location_info = os.environ.get('KAFKA_TOPIC_TRAFFIC_FLOW_OBSERVED_INFO') or "smartvillage-sumo-traffic-flow-observed-info"
+kafka_topic_location_info_patch = os.environ.get('KAFKA_TOPIC_TRAFFIC_FLOW_OBSERVED_INFO_PATCH') or "smartvillage-sumo-traffic-flow-observed-info-patch"
 kafka_security_protocol = os.environ.get('KAFKA_SECURITY_PROTOCOL') or "SSL"
 # Run: oc extract -n smartvillage secret/smartvillage-kafka-cluster-ca-cert --to=/opt/kafka/truststore/ --keys=ca.crt --confirm
 kafka_ssl_cafile = os.environ.get('KAFKA_SSL_CAFILE') or "/opt/kafka/truststore/ca.crt"
@@ -38,29 +41,40 @@ kafka_max_poll_interval_ms = int(os.environ.get('KAFKA_MAX_POLL_INTERVAL_MS') or
 zookeeper_host_name = os.environ.get('ZOOKEEPER_HOST_NAME') or "zookeeper.apps-crc.testing"
 zookeeper_port = int(os.environ.get('ZOOKEEPER_PORT') or "30081")
 
-if("SSL" == kafka_security_protocol):
-    bus = FlaskKafka(INTERRUPT_EVENT
-             , bootstrap_servers=",".join([kafka_brokers])
-             , group_id=kafka_group
-             , security_protocol=kafka_security_protocol
-             , ssl_cafile=kafka_ssl_cafile
-             , ssl_certfile=kafka_ssl_certfile
-             , ssl_keyfile=kafka_ssl_keyfile
+bus_run = FlaskKafka(INTERRUPT_EVENT
+         , bootstrap_servers=",".join([kafka_brokers])
+         , group_id=kafka_group_run
+         , security_protocol=kafka_security_protocol
+         , ssl_cafile=kafka_ssl_cafile
+         , ssl_certfile=kafka_ssl_certfile
+         , ssl_keyfile=kafka_ssl_keyfile
 #             , max_poll_interval_ms=kafka_max_poll_interval_ms
-             , max_poll_records=kafka_max_poll_records
-             )
-else:
-    bus = FlaskKafka(INTERRUPT_EVENT
-             , bootstrap_servers=",".join([kafka_brokers])
-             , group_id=kafka_group
-             , security_protocol=kafka_security_protocol
-#             , max_poll_interval_ms=kafka_max_poll_interval_ms
-             , max_poll_records=kafka_max_poll_records
-             )
+         , max_poll_records=kafka_max_poll_records
+         )
 
-@bus.handle(kafka_topic_sumo_run)
+bus_stop = FlaskKafka(INTERRUPT_EVENT
+         , bootstrap_servers=",".join([kafka_brokers])
+         , group_id=kafka_group_stop
+         , security_protocol=kafka_security_protocol
+         , ssl_cafile=kafka_ssl_cafile
+         , ssl_certfile=kafka_ssl_certfile
+         , ssl_keyfile=kafka_ssl_keyfile
+#             , max_poll_interval_ms=kafka_max_poll_interval_ms
+         , max_poll_records=kafka_max_poll_records
+         )
+
+producer = KafkaProducer(
+        bootstrap_servers=kafka_brokers
+        , security_protocol=kafka_security_protocol
+        , ssl_cafile=kafka_ssl_cafile
+        , ssl_certfile=kafka_ssl_certfile
+        , ssl_keyfile=kafka_ssl_keyfile
+        )
+
+@bus_run.handle(kafka_topic_sumo_run)
 def kafka_topic_sumo_run_handle(msg):
     try:
+        bus_run.consumer.commit()
         print("received message from %s topic: %s" % (kafka_topic_sumo_run, msg))
         sumoBinary = checkBinary('sumo')
         simulation_report = json.loads(msg.value)
@@ -68,8 +82,9 @@ def kafka_topic_sumo_run_handle(msg):
         zk = KazooClient(hosts='%s:%s' % (zookeeper_host_name, zookeeper_port))
         zk.start()
         try:
-            zk.create("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes(simulation_report.get("reportStatus"), 'utf-8'), makepath=True)
+            zk.create("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Running", 'utf-8'), makepath=True)
         except NodeExistsError as e:
+            zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Running", 'utf-8'))
             pass
 
         initial_par = simulation_report.get('paramInitialPar', [10., 20., 30., 50., 10., 10., 8., 8., 5., 5.])
@@ -84,22 +99,7 @@ def kafka_topic_sumo_run_handle(msg):
         total_iter_num = int(simulation_report.get('paramTotalIterNum', 10))
         iters_per_par = int(simulation_report.get('paramItersPerPar', 5))
 
-        if("SSL" == kafka_security_protocol):
-            producer = KafkaProducer(
-                    bootstrap_servers=kafka_brokers
-                    , security_protocol=kafka_security_protocol
-                    , ssl_cafile=kafka_ssl_cafile
-                    , ssl_certfile=kafka_ssl_certfile
-                    , ssl_keyfile=kafka_ssl_keyfile
-                    )
-        else:
-            producer = KafkaProducer(
-                    bootstrap_servers=kafka_brokers
-                    , security_protocol=kafka_security_protocol
-                    , sasl_mechanism="PLAIN"
-                    )
-
-        result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": [], "setUpdatedPerformance": [], "setReportStatus": "Running" }
+        result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": [], "setUpdatedPerformance": [], "setReportStatus": "Running", "setReportProgress": "0" }
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
     
         updated_parameters, updated_performance = main_pedestrian.ipa_gradient_method_pedestrian(
@@ -115,7 +115,10 @@ def kafka_topic_sumo_run_handle(msg):
                 , iters_per_par=iters_per_par
                 , print_mode=False)
 
-        result = { "pk": simulation_report.get("pk"), "setReportStatus": "Completed" }
+        if len(updated_parameters[0]) == total_iter_num:
+            result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": updated_parameters, "setUpdatedPerformance": updated_performance, "setReportStatus": "Completed", "setReportProgress": "100" }
+        else:
+            result = { "pk": simulation_report.get("pk"), "setUpdatedParameters": updated_parameters, "setUpdatedPerformance": updated_performance, "setReportStatus": "Stopped" }
         producer.send(kafka_topic_sumo_run_report, json.dumps(result).encode('utf-8'))
         zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Completed", 'utf-8'))
 
@@ -139,22 +142,22 @@ def kafka_topic_sumo_run_handle(msg):
     
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
 
-@bus.handle(kafka_topic_sumo_stop)
+@bus_stop.handle(kafka_topic_sumo_stop)
 def kafka_topic_sumo_stop_handle(msg):
     try:
         simulation_report = json.loads(msg.value)
 
         zk = KazooClient(hosts='%s:%s' % (zookeeper_host_name, zookeeper_port))
         zk.start()
+        (zookeeper_report_status, node_stat) = zk.get("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"))
+        print("zookeeper_report_status: %s" % zookeeper_report_status)
         try:
             zk.create("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Stop", 'utf-8'), makepath=True)
         except NodeExistsError as e:
-            pass
-
+            zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Stop", 'utf-8'))
+        (zookeeper_report_status, node_stat) = zk.get("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"))
+        print("zookeeper_report_status: %s" % zookeeper_report_status)
         print("received STOP message from %s topic: %s %s" % (kafka_topic_sumo_run, simulation_report.get("pk"), simulation_report.get("objectTitle")))
-    
-
-        zk.set("TLC/SimulationReport/%s/reportStatus" % simulation_report.get("pk"), bytes("Stop", 'utf-8'))
 
         zk.stop()
     except Exception as e:
@@ -175,9 +178,13 @@ def kafka_topic_sumo_stop_handle(msg):
     
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_sumo_run, ex_value, '\n'.join(stack_trace)))
 
-@bus.handle(kafka_topic_simulation_info)
+@bus_stop.handle(kafka_topic_simulation_info)
 def kafka_topic_sumo_simulation_info(msg):
     try:
+        traffic_simulation = json.loads(msg.value)
+        pk_str = traffic_simulation.get('pk')
+
+        print("Recieved TrafficSimulation %s info message from %s topic" % (pk_str, kafka_topic_simulation_info))
 
         lane_area_detector_ids = []
         lane_area_detector_lanes = []
@@ -201,33 +208,91 @@ def kafka_topic_sumo_simulation_info(msg):
                 for lane_area_detector in lane_area_detectors:
                     lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
                     lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
-                    lane_area_detector_paths.append(os.path.abspath(os.path.join(lane_area_detector.xpath('@file')[0], '..', additional_file_path)))
+                    lane_area_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', lane_area_detector.xpath('@file')[0])))
 
                 e1_detectors = additional_file.xpath('//additional/e1Detector')
                 for e1_detector in e1_detectors:
+                    #print(etree.tostring(e1_detector, pretty_print=True))
                     e1_detector_ids.append(e1_detector.xpath('@id')[0])
-                    e1_detector_lanes.append(e1_detector.xpath('@lanes')[0])
-                    e1_detector_paths.append(os.path.abspath(os.path.join(e1_detector.xpath('@file')[0], '..', additional_file_path)))
+                    e1_detector_lanes.append(e1_detector.xpath('@lane')[0])
+                    e1_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', e1_detector.xpath('@file')[0])))
 
-        patch_body = {
+            patch_body = {
+                "pk": pk_str
 
-            "setLaneAreaDetectorIds": lane_area_detector_ids
-            , "setLaneAreaDetectorLanes": lane_area_detector_lanes
-            , "setLaneAreaDetectorPaths": lane_area_detector_paths
+                , "setLaneAreaDetectorIds": lane_area_detector_ids
+                , "setLaneAreaDetectorLanes": lane_area_detector_lanes
+                , "setLaneAreaDetectorPaths": lane_area_detector_paths
 
-            , "setE1DetectorIds": e1_detector_ids
-            , "setE1DetectorLanes": e1_detector_lanes
-            , "setE1DetectorPaths": e1_detector_paths
-        }
-        print(patch_body)
+                , "setE1DetectorIds": e1_detector_ids
+                , "setE1DetectorLanes": e1_detector_lanes
+                , "setE1DetectorPaths": e1_detector_paths
+            }
+            producer.send(kafka_topic_simulation_info_patch, json.dumps(patch_body).encode('utf-8'))
+            print("Sent PATCH TrafficSimulation %s message to %s topic" % (pk_str, kafka_topic_simulation_info_patch))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
         trace_back = traceback.extract_tb(ex_traceback)
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
 
-@bus.handle(kafka_topic_location_info)
+@bus_stop.handle(kafka_topic_location_info)
 def kafka_topic_sumo_location_info(msg):
+    try:
+        traffic_simulation = json.loads(msg.value)
+        pk_str = traffic_simulation.get('pk')
+
+        print("Recieved TrafficSimulation %s info message from %s topic" % (pk_str, kafka_topic_simulation_info))
+
+        lane_area_detector_ids = []
+        lane_area_detector_lanes = []
+        lane_area_detector_paths = []
+
+        e1_detector_ids = []
+        e1_detector_lanes = []
+        e1_detector_paths = []
+
+        traffic_simulation = json.loads(msg.value)
+        sumocfg_path = traffic_simulation.get('sumocfgPath')
+        if sumocfg_path:
+            sumocfg = etree.parse(sumocfg_path)
+            net_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/net-file/@value')]
+            additional_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/additional-files/@value')]
+
+            for additional_file_path in additional_file_paths:
+                additional_file = etree.parse(additional_file_path)
+
+                lane_area_detectors = additional_file.xpath('//additional/laneAreaDetector')
+                for lane_area_detector in lane_area_detectors:
+                    lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
+                    lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
+                    lane_area_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', lane_area_detector.xpath('@file')[0])))
+
+                e1_detectors = additional_file.xpath('//additional/e1Detector')
+                for e1_detector in e1_detectors:
+                    #print(etree.tostring(e1_detector, pretty_print=True))
+                    e1_detector_ids.append(e1_detector.xpath('@id')[0])
+                    e1_detector_lanes.append(e1_detector.xpath('@lane')[0])
+                    e1_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', e1_detector.xpath('@file')[0])))
+
+            patch_body = {
+                "pk": pk_str
+
+                , "setLaneAreaDetectorIds": lane_area_detector_ids
+                , "setLaneAreaDetectorLanes": lane_area_detector_lanes
+                , "setLaneAreaDetectorPaths": lane_area_detector_paths
+
+                , "setE1DetectorIds": e1_detector_ids
+                , "setE1DetectorLanes": e1_detector_lanes
+                , "setE1DetectorPaths": e1_detector_paths
+            }
+            producer.send(kafka_topic_simulation_info_patch, json.dumps(patch_body).encode('utf-8'))
+            print("Sent PATCH TrafficSimulation %s message to %s topic" % (pk_str, kafka_topic_simulation_info_patch))
+    except Exception as e:
+        ex_type, ex_value, ex_traceback = sys.exc_info()
+        # Extract unformatter stack traces as tuples
+        trace_back = traceback.extract_tb(ex_traceback)
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
     try:
         net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection_pedestrian.net.xml')
         edge_shapes = [
@@ -254,10 +319,16 @@ def kafka_topic_sumo_location_info(msg):
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
 
 def listen_kill_server():
-    signal.signal(signal.SIGTERM, bus.interrupted_process)
-    signal.signal(signal.SIGINT, bus.interrupted_process)
-    signal.signal(signal.SIGQUIT, bus.interrupted_process)
-    signal.signal(signal.SIGHUP, bus.interrupted_process)
+
+    signal.signal(signal.SIGTERM, bus_run.interrupted_process)
+    signal.signal(signal.SIGINT, bus_run.interrupted_process)
+    signal.signal(signal.SIGQUIT, bus_run.interrupted_process)
+    signal.signal(signal.SIGHUP, bus_run.interrupted_process)
+
+    signal.signal(signal.SIGTERM, bus_stop.interrupted_process)
+    signal.signal(signal.SIGINT, bus_stop.interrupted_process)
+    signal.signal(signal.SIGQUIT, bus_stop.interrupted_process)
+    signal.signal(signal.SIGHUP, bus_stop.interrupted_process)
 
 @app.route('/')
 def hello():
@@ -267,7 +338,8 @@ def start():
     flask_port = os.environ.get('FLASK_PORT') or 8081
     flask_port = int(flask_port)
 
-    bus.run()
+    bus_run.run()
+    bus_stop.run()
     listen_kill_server()
     app.run(port=flask_port, host='0.0.0.0')
 

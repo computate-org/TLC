@@ -13,6 +13,7 @@ import os
 import sys
 import traceback
 import main_pedestrian
+import pyproj
 
 app = Flask(__name__)
 
@@ -199,7 +200,17 @@ def kafka_topic_sumo_simulation_info(msg):
         if sumocfg_path:
             sumocfg = etree.parse(sumocfg_path)
             net_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/net-file/@value')]
+            net_file_path = net_file_paths[0]
             additional_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/additional-files/@value')]
+            route_file_path_strings = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/route-files/@value')]
+            route_file_paths = []
+            if route_file_path_strings:
+                for route_file_path_string in route_file_path_strings:
+                    for route_file_path in route_file_path_string.split(','):
+                        route_file_paths.append(route_file_path.strip())
+
+            net_file = etree.parse(net_file_path)
+            net = sumolib.net.readNet(net_file_path)
 
             for additional_file_path in additional_file_paths:
                 additional_file = etree.parse(additional_file_path)
@@ -207,12 +218,26 @@ def kafka_topic_sumo_simulation_info(msg):
                 lane_area_detectors = additional_file.xpath('//additional/laneAreaDetector')
                 for lane_area_detector in lane_area_detectors:
                     lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
-                    lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
                     lane_area_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', lane_area_detector.xpath('@file')[0])))
+
+
+                    lane_area_detector_lane_string = lane_area_detector.xpath('@lanes')[0]
+                    lane_area_detector_lane = []
+                    lane_area_detector_lanes.append(lane_area_detector_lane)
+                    for lane_area_detector_lane_id in lane_area_detector_lane_string.split(" "):
+                        coordinates = []
+                        lane_area_detector_lane_data = {"id": lane_area_detector_lane_id, "type": "LineString", "coordinates": coordinates}
+                        lane_area_detector_lane.append(lane_area_detector_lane_data)
+                        edge_points = net_file.xpath('//net/edge/lane[@id="%s"]/@shape' % lane_area_detector_lane_id)[0].split(" ")
+                        print("lane_area_detector_lane_id: %s" % lane_area_detector_lane_id)
+                        print("edge_points: %s" % edge_points)
+                        for edge_point in edge_points:
+                            edge_point_parts = edge_point.split(',')
+                            coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
+                            coordinates.append([float(coords[1]), float(coords[0])])
 
                 e1_detectors = additional_file.xpath('//additional/e1Detector')
                 for e1_detector in e1_detectors:
-                    #print(etree.tostring(e1_detector, pretty_print=True))
                     e1_detector_ids.append(e1_detector.xpath('@id')[0])
                     e1_detector_lanes.append(e1_detector.xpath('@lane')[0])
                     e1_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', e1_detector.xpath('@file')[0])))
@@ -234,89 +259,90 @@ def kafka_topic_sumo_simulation_info(msg):
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
         trace_back = traceback.extract_tb(ex_traceback)
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
+        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_simulation_info, ex_value, '\n'.join(trace_back)))
 
 @bus_stop.handle(kafka_topic_location_info)
 def kafka_topic_sumo_location_info(msg):
     try:
-        traffic_simulation = json.loads(msg.value)
-        pk_str = traffic_simulation.get('pk')
-
-        print("Recieved TrafficSimulation %s info message from %s topic" % (pk_str, kafka_topic_simulation_info))
-
-        lane_area_detector_ids = []
-        lane_area_detector_lanes = []
-        lane_area_detector_paths = []
-
-        e1_detector_ids = []
-        e1_detector_lanes = []
-        e1_detector_paths = []
-
-        traffic_simulation = json.loads(msg.value)
-        sumocfg_path = traffic_simulation.get('sumocfgPath')
-        if sumocfg_path:
-            sumocfg = etree.parse(sumocfg_path)
-            net_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/net-file/@value')]
-            additional_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/additional-files/@value')]
-
-            for additional_file_path in additional_file_paths:
-                additional_file = etree.parse(additional_file_path)
-
-                lane_area_detectors = additional_file.xpath('//additional/laneAreaDetector')
-                for lane_area_detector in lane_area_detectors:
-                    lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
-                    lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
-                    lane_area_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', lane_area_detector.xpath('@file')[0])))
-
-                e1_detectors = additional_file.xpath('//additional/e1Detector')
-                for e1_detector in e1_detectors:
-                    #print(etree.tostring(e1_detector, pretty_print=True))
-                    e1_detector_ids.append(e1_detector.xpath('@id')[0])
-                    e1_detector_lanes.append(e1_detector.xpath('@lane')[0])
-                    e1_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', e1_detector.xpath('@file')[0])))
-
-            patch_body = {
-                "pk": pk_str
-
-                , "setLaneAreaDetectorIds": lane_area_detector_ids
-                , "setLaneAreaDetectorLanes": lane_area_detector_lanes
-                , "setLaneAreaDetectorPaths": lane_area_detector_paths
-
-                , "setE1DetectorIds": e1_detector_ids
-                , "setE1DetectorLanes": e1_detector_lanes
-                , "setE1DetectorPaths": e1_detector_paths
-            }
-            producer.send(kafka_topic_simulation_info_patch, json.dumps(patch_body).encode('utf-8'))
-            print("Sent PATCH TrafficSimulation %s message to %s topic" % (pk_str, kafka_topic_simulation_info_patch))
+        traffic_flow_observed = json.loads(msg.value)
+        # pk_str = traffic_flow_observed.get('pk')
+        # class_simple_name = traffic_flow_observed.get('classSimpleName')
+        #
+        # print("Recieved %s %s info message from %s topic" % (class_simple_name, pk_str, kafka_topic_location_info))
+        #
+        # lane_area_detector_ids = []
+        # lane_area_detector_lanes = []
+        # lane_area_detector_paths = []
+        #
+        # e1_detector_ids = []
+        # e1_detector_lanes = []
+        # e1_detector_paths = []
+        #
+        # traffic_flow_observed = json.loads(msg.value)
+        # sumocfg_path = traffic_flow_observed.get('sumocfgPath')
+        # if sumocfg_path:
+        #     sumocfg = etree.parse(sumocfg_path)
+        #     net_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/net-file/@value')]
+        #     additional_file_paths = [os.path.abspath(os.path.join(sumocfg_path, '..', path)) for path in sumocfg.xpath('//configuration/input/additional-files/@value')]
+        #
+        #     for additional_file_path in additional_file_paths:
+        #         additional_file = etree.parse(additional_file_path)
+        #
+        #         lane_area_detectors = additional_file.xpath('//additional/laneAreaDetector')
+        #         for lane_area_detector in lane_area_detectors:
+        #             lane_area_detector_ids.append(lane_area_detector.xpath('@id')[0])
+        #             lane_area_detector_lanes.append(lane_area_detector.xpath('@lanes')[0])
+        #             lane_area_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', lane_area_detector.xpath('@file')[0])))
+        #
+        #         e1_detectors = additional_file.xpath('//additional/e1Detector')
+        #         for e1_detector in e1_detectors:
+        #             #print(etree.tostring(e1_detector, pretty_print=True))
+        #             e1_detector_ids.append(e1_detector.xpath('@id')[0])
+        #             e1_detector_lanes.append(e1_detector.xpath('@lane')[0])
+        #             e1_detector_paths.append(os.path.abspath(os.path.join(additional_file_path, '..', e1_detector.xpath('@file')[0])))
+        #
+        #     patch_body = {
+        #         "pk": pk_str
+        #
+        #         , "setLaneAreaDetectorIds": lane_area_detector_ids
+        #         , "setLaneAreaDetectorLanes": lane_area_detector_lanes
+        #         , "setLaneAreaDetectorPaths": lane_area_detector_paths
+        #
+        #         , "setE1DetectorIds": e1_detector_ids
+        #         , "setE1DetectorLanes": e1_detector_lanes
+        #         , "setE1DetectorPaths": e1_detector_paths
+        #     }
+        #     producer.send(kafka_topic_simulation_info_patch, json.dumps(patch_body).encode('utf-8'))
+        #     print("Sent PATCH TrafficSimulation %s message to %s topic" % (pk_str, kafka_topic_simulation_info_patch))
     except Exception as e:
         ex_type, ex_value, ex_traceback = sys.exc_info()
         # Extract unformatter stack traces as tuples
         trace_back = traceback.extract_tb(ex_traceback)
         print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
-    try:
-        net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection_pedestrian.net.xml')
-        edge_shapes = [
-            "175.13,734.43 177.69,752.95 180.82,774.94 183.17,784.52"
-            , "187.08,795.35 189.01,799.98 196.82,813.25 208.02,832.13"
-            , "208.17,832.40 214.93,844.44 216.53,846.30"
-            ]
-        for edge_shape in edge_shapes:
-            edge_points = edge_shape.split(' ')
-            lat = []
-            lon = []
-            for edge_point in edge_points:
-                edge_point_parts = edge_point.split(',')
-                coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
-                lat.append(float(coords[1]))
-                lon.append(float(coords[0]))
-            print()
-            print("lat: %s" % lat)
-            print("lon: %s" % lon)
-    except Exception as e:
-        ex_type, ex_value, ex_traceback = sys.exc_info()
-        # Extract unformatter stack traces as tuples
-        trace_back = traceback.extract_tb(ex_traceback)
-        print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
+    # try:
+    #     net = sumolib.net.readNet('/home/ctate/.local/src/TLC/input/Veberod_intersection_pedestrian.net.xml')
+    #     edge_shapes = [
+    #         "175.13,734.43 177.69,752.95 180.82,774.94 183.17,784.52"
+    #         , "187.08,795.35 189.01,799.98 196.82,813.25 208.02,832.13"
+    #         , "208.17,832.40 214.93,844.44 216.53,846.30"
+    #         ]
+    #     for edge_shape in edge_shapes:
+    #         edge_points = edge_shape.split(' ')
+    #         lat = []
+    #         lon = []
+    #         for edge_point in edge_points:
+    #             edge_point_parts = edge_point.split(',')
+    #             coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
+    #             lat.append(float(coords[1]))
+    #             lon.append(float(coords[0]))
+    #         print()
+    #         print("lat: %s" % lat)
+    #         print("lon: %s" % lon)
+    # except Exception as e:
+    #     ex_type, ex_value, ex_traceback = sys.exc_info()
+    #     # Extract unformatter stack traces as tuples
+    #     trace_back = traceback.extract_tb(ex_traceback)
+    #     print("%s occured processing a message on %s topic: %s\n%s" % (ex_type.__name__, kafka_topic_location_info, ex_value, '\n'.join(trace_back)))
 
 def listen_kill_server():
 

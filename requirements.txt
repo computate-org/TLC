@@ -4,3 +4,5 @@ sumolib
 matplotlib
 kazoo
 lxml
+pyproj
+werkzeug==2.2.2

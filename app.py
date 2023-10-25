@@ -212,6 +212,23 @@ def kafka_topic_sumo_simulation_info(msg):
             net_file = etree.parse(net_file_path)
             net = sumolib.net.readNet(net_file_path)
 
+            walking_area_ids = []
+            walking_area_lanes = []
+            walkingarea_edges = net_file.xpath('//net/edge[@function="walkingarea"]')
+            for walkingarea_edge in walkingarea_edges:
+                walking_area_lane_id = walkingarea_edge.xpath('@id')[0]
+                walking_area_ids.append(walking_area_lane_id)
+                coordinates = []
+                walking_area_lane_data = {"id": walking_area_lane_id, "type": "Polygon", "coordinates": coordinates}
+                walking_area_lanes.append(walking_area_lane_data)
+                walkingarea_shapes = walkingarea_edge.xpath('lane/@shape')
+                for walkingarea_shape in walkingarea_shapes:
+                    walkingarea_points = walkingarea_shape.split(" ")
+                    for walkingarea_point in walkingarea_points:
+                        walkingarea_point_parts = walkingarea_point.split(',')
+                        coords = net.convertXY2LonLat(float(walkingarea_point_parts[0]), float(walkingarea_point_parts[1]))
+                        coordinates.append([float(coords[1]), float(coords[0])])
+
             for additional_file_path in additional_file_paths:
                 additional_file = etree.parse(additional_file_path)
 
@@ -229,8 +246,6 @@ def kafka_topic_sumo_simulation_info(msg):
                         lane_area_detector_lane_data = {"id": lane_area_detector_lane_id, "type": "LineString", "coordinates": coordinates}
                         lane_area_detector_lane.append(lane_area_detector_lane_data)
                         edge_points = net_file.xpath('//net/edge/lane[@id="%s"]/@shape' % lane_area_detector_lane_id)[0].split(" ")
-                        print("lane_area_detector_lane_id: %s" % lane_area_detector_lane_id)
-                        print("edge_points: %s" % edge_points)
                         for edge_point in edge_points:
                             edge_point_parts = edge_point.split(',')
                             coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
@@ -252,6 +267,9 @@ def kafka_topic_sumo_simulation_info(msg):
                 , "setE1DetectorIds": e1_detector_ids
                 , "setE1DetectorLanes": e1_detector_lanes
                 , "setE1DetectorPaths": e1_detector_paths
+
+                , "setWalkingAreaIds": walking_area_ids
+                , "setWalkingAreaLanes": walking_area_lanes
             }
             producer.send(kafka_topic_simulation_info_patch, json.dumps(patch_body).encode('utf-8'))
             print("Sent PATCH TrafficSimulation %s message to %s topic" % (pk_str, kafka_topic_simulation_info_patch))

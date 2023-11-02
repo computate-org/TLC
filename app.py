@@ -227,7 +227,7 @@ def kafka_topic_sumo_simulation_info(msg):
                     for walkingarea_point in walkingarea_points:
                         walkingarea_point_parts = walkingarea_point.split(',')
                         coords = net.convertXY2LonLat(float(walkingarea_point_parts[0]), float(walkingarea_point_parts[1]))
-                        coordinates.append([float(coords[1]), float(coords[0])])
+                        coordinates.append([float(coords[0]), float(coords[1])])
 
             for additional_file_path in additional_file_paths:
                 additional_file = etree.parse(additional_file_path)
@@ -249,7 +249,7 @@ def kafka_topic_sumo_simulation_info(msg):
                         for edge_point in edge_points:
                             edge_point_parts = edge_point.split(',')
                             coords = net.convertXY2LonLat(float(edge_point_parts[0]), float(edge_point_parts[1]))
-                            coordinates.append([float(coords[1]), float(coords[0])])
+                            coordinates.append([float(coords[0]), float(coords[1])])
 
                 e1_detectors = additional_file.xpath('//additional/e1Detector')
                 for e1_detector in e1_detectors:
